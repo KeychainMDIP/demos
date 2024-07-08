@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+pushd les_troyens
+npm run build
+popd
+node index.js

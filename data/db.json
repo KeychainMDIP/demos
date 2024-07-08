@@ -1,0 +1,99 @@
+{
+    "users": {
+        "did:test:z3v8AuabLMyYJRdPG4sevxzsijxYJd6HLPVWpRs4K7rwNagCy1q": {
+            "firstLogin": "2024-06-28T18:01:00.221Z",
+            "lastLogin": "2024-06-28T19:28:58.608Z",
+            "logins": 3,
+            "role": "Guest",
+            "name": "Music-Lover"
+        },
+        "did:test:z3v8AuaUgwESQn1bKP1gZRk7i4HyCpBpQ61UWeqNvSZfQbKFxZq": {
+            "firstLogin": "2024-06-28T18:03:21.398Z",
+            "lastLogin": "2024-07-01T17:40:47.785Z",
+            "logins": 2,
+            "role": "Guest",
+            "name": "music-demo-owner"
+        },
+        "did:test:z3v8AuaftqKqa7xXqTdMjD8qYrp5trPUc4bfG27Bc9sBBtmuh4G": {
+            "firstLogin": "2024-06-29T00:15:01.135Z",
+            "lastLogin": "2024-07-01T17:42:20.513Z",
+            "logins": 3,
+            "role": "Owner",
+            "name": "les_troyens_owner"
+        },
+        "did:test:z3v8AuaaVzHsXF8c8DdZJcetcg5ScC13cnfthfGZK9XqywHVoEt": {
+            "firstLogin": "2024-06-29T00:58:56.841Z",
+            "lastLogin": "2024-06-29T02:09:43.278Z",
+            "logins": 4,
+            "role": "Guest",
+            "name": "gamerflax"
+        },
+        "did:test:z3v8Auabwn83hxvjcPX18VG4eyp5YsA17GQ6he2CVV9xRS7n2sM": {
+            "firstLogin": "2024-06-29T02:30:12.301Z",
+            "lastLogin": "2024-06-29T03:47:16.340Z",
+            "logins": 8,
+            "role": "Admin",
+            "name": "gamerflax"
+        },
+        "did:test:z3v8Auac5zehi8Z3xSmUbfG54YAaLowWUsZidwCdke5GxJZjJLy": {
+            "firstLogin": "2024-06-29T03:09:21.423Z",
+            "lastLogin": "2024-06-29T04:25:38.482Z",
+            "logins": 6,
+            "role": "Member",
+            "name": "Virgil"
+        },
+        "did:test:z3v8AuaeDXCdkdGavQfnZ31gBTb1A6aXrtA4eoGAupiKt4oG8oX": {
+            "firstLogin": "2024-06-29T04:08:50.476Z",
+            "lastLogin": "2024-07-01T12:32:09.235Z",
+            "logins": 4,
+            "role": "Guest",
+            "name": "flaxdroid"
+        },
+        "did:test:z3v8AuaToxEsy8rP2ffbBKF9NQ1JxPTmJZfSSFVXRY14NTjn5LH": {
+            "firstLogin": "2024-06-29T11:24:51.967Z",
+            "lastLogin": "2024-06-29T16:15:26.752Z",
+            "logins": 2,
+            "role": "Guest",
+            "name": "Peregrin"
+        },
+        "did:test:z3v8AuaUnE51PmgYVGxY5w6xaJK6TCD8HUjSt5p3nCg7vZD5Xzn": {
+            "firstLogin": "2024-06-29T13:14:03.766Z",
+            "lastLogin": "2024-06-29T13:14:03.766Z",
+            "logins": 1,
+            "role": {},
+            "name": "David"
+        },
+        "did:test:z3v8AuaXGjATKpR4UDkQCEyPRkNuxqSje2xgpk6wJhABzy1UADi": {
+            "firstLogin": "2024-07-01T15:49:55.426Z",
+            "lastLogin": "2024-07-01T15:57:50.248Z",
+            "logins": 2,
+            "role": "Guest"
+        },
+        "did:test:z3v8AuaY4s3HhkiDzM87uF26nUJFbTCJBGz5ZknLkyttj7JRto9": {
+            "firstLogin": "2024-07-01T19:48:36.027Z",
+            "lastLogin": "2024-07-01T19:48:36.027Z",
+            "logins": 1,
+            "role": "Guest",
+            "name": "flaxscip"
+        },
+        "did:test:z3v8AuajJc2aE8mTDDcDjpi1q7YUu9VNkXRzbDiy7rokUrUcfDq": {
+            "firstLogin": "2024-07-02T19:49:52.576Z",
+            "lastLogin": "2024-07-02T19:49:52.576Z",
+            "logins": 1,
+            "role": "Guest"
+        },
+        "did:test:z3v8AuajqwFKfzMFswLHrkwMBjnaHmWQPrx3FuWQjUagiNoNses": {
+            "firstLogin": "2024-07-02T21:13:47.515Z",
+            "lastLogin": "2024-07-02T21:13:47.515Z",
+            "logins": 1,
+            "role": "Guest",
+            "name": "Clay Benson"
+        },
+        "did:test:z3v8AuaiP32USw4LAVwBYwM9cWZUa47ybz3mTc9hDcnv6oRu7ey": {
+            "firstLogin": "2024-07-03T16:52:58.305Z",
+            "lastLogin": "2024-07-03T16:52:58.305Z",
+            "logins": 1,
+            "role": "Guest"
+        }
+    }
+}
