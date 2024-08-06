@@ -6,6 +6,7 @@ import fs from 'fs';
 import https from 'https';
 import { fileURLToPath } from 'url';
 import * as keymaster from './keymaster-sdk.js';
+keymaster.setURL('http://localhost:4241');
 
 const app = express();
 const port = 3690;
