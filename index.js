@@ -6,12 +6,14 @@ import fs from 'fs';
 import https from 'https';
 import { fileURLToPath } from 'url';
 import * as keymaster from './keymaster-sdk.js';
-keymaster.setURL('http://localhost:4241');
+import dotenv from 'dotenv';
+import cors from 'cors';
+
+dotenv.config();
 
 const app = express();
-const port = 3690;
-const domain = 'localhost';
 const dbName = 'data/db.json';
+const logins = {};
 
 const roles = {
     owner: 'les_troyens_owner',
@@ -25,7 +27,7 @@ app.use(express.json());
 
 // Session setup
 app.use(session({
-    secret: 'MDIP',
+    secret: 'MDIP-troyens',
     resave: false,
     saveUninitialized: true,
     cookie: { secure: true } // Set to true if using HTTPS
@@ -231,6 +233,49 @@ function isAdmin(req, res, next) {
     });
 }
 
+async function loginUser(response) {
+    const verify = await keymaster.verifyResponse(response);
+
+    if (verify.match) {
+        const challenge = verify.challenge;
+        const did = verify.responder;
+
+        logins[challenge] = {
+            response,
+            challenge,
+            did,
+            verify,
+        };
+
+        const db = loadDb();
+
+        if (!db.users) {
+            db.users = {};
+        }
+
+        const now = new Date().toISOString();
+
+        if (Object.keys(db.users).includes(did)) {
+            db.users[did].lastLogin = now;
+            db.users[did].logins += 1;
+        }
+        else {
+            const role = await getRole(did) || await addGuest(did);
+
+            db.users[did] = {
+                firstLogin: now,
+                lastLogin: now,
+                logins: 1,
+                role: role,
+            }
+        }
+
+        writeDb(db);
+    }
+
+    return verify.match;
+}
+
 app.get('/api/version', async (req, res) => {
     try {
         res.json(1);
@@ -242,55 +287,50 @@ app.get('/api/version', async (req, res) => {
 
 app.get('/api/challenge', async (req, res) => {
     try {
-        const challenge = await keymaster.createChallenge();
-        res.json(challenge);
+        const challenge = await keymaster.createChallenge({
+            challenge: {
+                callback: `${process.env.AD_HOST_URL}/api/login`
+            }
+        });
+        req.session.challenge = challenge;
+        const challengeURL = `${process.env.AD_WALLET_URL}?challenge=${challenge}`;
+
+        const doc = await keymaster.resolveDID(challenge);
+        console.log(JSON.stringify(doc, null, 4));
+        res.json({ challenge, challengeURL });
     } catch (error) {
         console.log(error);
         res.status(500).send(error.toString());
     }
 });
 
-app.post('/api/login', async (req, res) => {
+const corsOptions = {
+    origin: '*',               // Allow all origins (any wallet) to login
+    methods: ['GET', 'POST'],  // Specify which methods are allowed (e.g., GET, POST)
+    credentials: true,         // Enable if you need to send cookies or authorization headers
+    optionsSuccessStatus: 200  // Some legacy browsers choke on 204
+};
+
+app.options('/api/login', cors(corsOptions)); // Handle preflight requests for this route
+
+app.get('/api/login', cors(corsOptions), async (req, res) => {
     try {
-        const { response, challenge } = req.body;
-        const verify = await keymaster.verifyResponse(response, challenge);
+        const { response } = req.query;
+        const verify = await loginUser(response);
+        req.session.user = logins[verify.challenge];
 
-        if (verify.match) {
-            const docs = await keymaster.resolveDID(response);
-            const did = docs.didDocument.controller;
-            req.session.user = {
-                response,
-                challenge,
-                did,
-                docs,
-                verify,
-            };
+        res.json({ authenticated: verify.match });
+    } catch (error) {
+        console.log(error);
+        res.status(500).send(error.toString());
+    }
+});
 
-            const db = loadDb();
-
-            if (!db.users) {
-                db.users = {};
-            }
-
-            const now = new Date().toISOString();
-
-            if (Object.keys(db.users).includes(did)) {
-                db.users[did].lastLogin = now;
-                db.users[did].logins += 1;
-            }
-            else {
-                const role = await getRole(did) || await addGuest(did);
-
-                db.users[did] = {
-                    firstLogin: now,
-                    lastLogin: now,
-                    logins: 1,
-                    role: role,
-                }
-            }
-
-            writeDb(db);
-        }
+app.post('/api/login', cors(corsOptions), async (req, res) => {
+    try {
+        const { response } = req.body;
+        const verify = await loginUser(response);
+        req.session.user = logins[verify.challenge];
 
         res.json({ authenticated: verify.match });
     } catch (error) {
@@ -312,7 +352,11 @@ app.post('/api/logout', async (req, res) => {
 
 app.get('/api/check-auth', async (req, res) => {
     try {
-        const isAuthenticated = req.session.user ? true : false;
+        if (!req.session.user && req.session.challenge) {
+            req.session.user = logins[req.session.challenge];
+        }
+
+	const isAuthenticated = req.session.user ? true : false;
         const userDID = isAuthenticated ? req.session.user.did : null;
         const db = loadDb();
 
@@ -502,13 +546,18 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // Read the certificate and key
 const options = {
-    key: fs.readFileSync(`${domain}-key.pem`),
-    cert: fs.readFileSync(`${domain}.pem`)
+    key: fs.readFileSync(`${process.env.AD_KEY_FILE}`),
+    cert: fs.readFileSync(`${process.env.AD_CERT_FILE}`)
 };
 
-https.createServer(options, app).listen(port, async () => {
+https.createServer(options, app).listen(process.env.AD_HOST_PORT, async () => {
+    keymaster.setURL(process.env.AD_KEYMASTER_URL);
     await keymaster.waitUntilReady();
     await verifyRoles();
     await verifyDb();
-    console.log(`les_troyens listening at https://${domain}:${port}`);
+    console.log(`les_troyens using keymaster at ${process.env.AD_KEYMASTER_URL}`);
+    console.log(`les_troyens using wallet at ${process.env.AD_WALLET_URL}`);
+    console.log(`les_troyens using key file ${process.env.AD_KEY_FILE}`);
+    console.log(`les_troyens using cert file ${process.env.AD_CERT_FILE}`);
+    console.log(`les_troyens listening at ${process.env.AD_HOST_URL}`);
 });

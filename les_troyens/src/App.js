@@ -11,6 +11,7 @@ import { Box, Button, Grid, Select, MenuItem, TextField, Typography } from '@mui
 import { Table, TableBody, TableRow, TableCell } from '@mui/material';
 import axios from 'axios';
 import { format, differenceInDays } from 'date-fns';
+import { QRCodeSVG } from 'qrcode.react';
 
 import './App.css';
 
@@ -166,13 +167,31 @@ function ViewLogin() {
     const [challengeDID, setChallengeDID] = useState('');
     const [responseDID, setResponseDID] = useState('');
     const [loggingIn, setLoggingIn] = useState(false);
+    const [challengeURL, setChallengeURL] = useState(null);
+    const [challengeCopied, setChallengeCopied] = useState(false);
+
     const navigate = useNavigate();
+    let intervalId;
 
     useEffect(() => {
         const init = async () => {
             try {
+               intervalId = setInterval(async () => {
+                    try {
+                        const response = await axios.get('/api/check-auth');
+                        if (response.data.isAuthenticated) {
+                            clearInterval(intervalId);
+                            navigate('/');
+                        }
+                    } catch (error) {
+                        console.error('Failed to check authentication:', error);
+                    }
+                }, 1000); // Check every 3 seconds
+
                 const response = await axios.get(`/api/challenge`);
-                setChallengeDID(response.data);
+                const { challenge, challengeURL } = response.data;
+                setChallengeDID(challenge);
+                setChallengeURL(encodeURI(challengeURL));
             }
             catch (error) {
                 window.alert(error);
@@ -180,6 +199,7 @@ function ViewLogin() {
         };
 
         init();
+	return () => clearInterval(intervalId);
     }, []);
 
     async function login() {
@@ -210,7 +230,7 @@ function ViewLogin() {
             window.alert('Failed to copy text: ', error);
         }
     };
-
+	
     return (
         <div className="App" style={{ backgroundColor: "#ebdfb3"}}>
             <Header title="Can you respond to Les Troyens' challenge?" />
@@ -219,6 +239,11 @@ function ViewLogin() {
                     <TableRow>
                         <TableCell>Challenge:</TableCell>
                         <TableCell>
+                            {challengeURL &&
+                                <a href={challengeURL} target="_blank" rel="noopener noreferrer">
+                                    <QRCodeSVG value={challengeURL} />
+                                </a>
+                            }
                             <Typography style={{ fontFamily: 'Courier' }}>
                                 {challengeDID}
                             </Typography>
@@ -250,6 +275,10 @@ function ViewLogin() {
                     </TableRow>
                 </TableBody>
             </Table>
+           <br />
+           The MDIP demo wallet below is provided as a development tool. To find out more about MDIP, visit <a href="https://keychain.org">keychain.org</a>.<br /><br />
+
+	    <iframe id="widget" src={challengeURL} width="900" height="500"></iframe>
         </div>
     )
 }
