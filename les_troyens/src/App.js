@@ -233,52 +233,25 @@ function ViewLogin() {
 	
     return (
         <div className="App" style={{ backgroundColor: "#ebdfb3"}}>
-            <Header title="Can you respond to Les Troyens' challenge?" />
+	    <Header title="Can you respond to Les Troyens challenge?" />
             <Table style={{ width: '800px' }}>
                 <TableBody>
                     <TableRow>
-                        <TableCell>Challenge:</TableCell>
-                        <TableCell>
+                        <TableCell align="center">
                             {challengeURL &&
-                                <a href={challengeURL} target="_blank" rel="noopener noreferrer">
+                                <a href={challengeURL} target="mdip" rel="noreferrer">
                                     <QRCodeSVG value={challengeURL} />
                                 </a>
                             }
-                            <Typography style={{ fontFamily: 'Courier' }}>
-                                {challengeDID}
-                            </Typography>
-                        </TableCell>
-                        <TableCell>
-                            <Button variant="contained" color="secondary" onClick={() => copyToClipboard(challengeDID)}>
-                               Memorize 
-                            </Button>
                         </TableCell>
                     </TableRow>
                     <TableRow>
-                        <TableCell></TableCell>
-                        <TableCell>
-                            <TextField
-                                label="Enter your Response DID here"
-                                style={{ width: '600px', fontFamily: 'Courier' }}
-                                value={responseDID}
-                                onChange={(e) => setResponseDID(e.target.value)}
-                                fullWidth
-                                margin="normal"
-                                inputProps={{ maxLength: 80 }}
-                            />
-                        </TableCell>
-                        <TableCell>
-                            <Button variant="contained" color="secondary" onClick={login} disabled={!responseDID || loggingIn}>
-                                Login
-                            </Button>
+                        <TableCell align="center">
+                            <a href="https://github.com/KeychainMDIP/auth-demo"><img src="https://ipfs.mdip.yourself.dev/ipfs/QmX3Mnas5cQa1miegi4bj7Dd2rbqWQKtQsQWwCtHS8NZzn?filename=MDIP%20Auth%20Callout.png"/></a>
                         </TableCell>
                     </TableRow>
                 </TableBody>
             </Table>
-           <br />
-           The MDIP demo wallet below is provided as a development tool. To find out more about MDIP, visit <a href="https://keychain.org">keychain.org</a>.<br /><br />
-
-	    <iframe id="widget" src={challengeURL} width="900" height="500"></iframe>
         </div>
     )
 }
