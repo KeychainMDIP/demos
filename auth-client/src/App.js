@@ -168,6 +168,7 @@ function ViewLogin() {
     const [responseDID, setResponseDID] = useState('');
     const [loggingIn, setLoggingIn] = useState(false);
     const [challengeURL, setChallengeURL] = useState(null);
+    const [extensionURL, setExtensionURL] = useState('');
     const [challengeCopied, setChallengeCopied] = useState(false);
 
     const navigate = useNavigate();
@@ -191,6 +192,7 @@ function ViewLogin() {
                 const response = await axios.get(`/api/challenge`);
                 const { challenge, challengeURL } = response.data;
                 setChallengeDID(challenge);
+	        setExtensionURL(`mdip://auth?challenge=${challenge}`);
                 setChallengeURL(encodeURI(challengeURL));
             }
             catch (error) {
@@ -248,6 +250,13 @@ function ViewLogin() {
                             <Button variant="contained" color="secondary" onClick={() => copyToClipboard(challengeDID)} disabled={challengeCopied}>
                                 Copy Challenge DID
                             </Button>
+	                    <Typography
+                                component="a"
+                                href={extensionURL}
+                                style={{ fontFamily: 'Courier' }}
+                            >
+                                {challengeDID}
+                            </Typography>
                         </TableCell>
 	             </TableRow>
                 </TableBody>
