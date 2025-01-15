@@ -186,7 +186,7 @@ function ViewLogin() {
                     } catch (error) {
                         console.error('Failed to check authentication:', error);
                     }
-                }, 1000); // Check every 3 seconds
+                }, 1000); // Check every 1 seconds
 
                 const response = await axios.get(`/api/challenge`);
                 const { challenge, challengeURL } = response.data;
@@ -239,17 +239,17 @@ function ViewLogin() {
                     <TableRow>
                         <TableCell align="center">
                             {challengeURL &&
-                                <a href={challengeURL} target="mdip" rel="noreferrer">
+                                <a href={challengeURL} target="mdip">
                                     <QRCodeSVG value={challengeURL} />
                                 </a>
                             }
                         </TableCell>
-                    </TableRow>
-                    <TableRow>
-                        <TableCell align="center">
-                            <a href="https://github.com/KeychainMDIP/auth-demo"><img src="https://ipfs.mdip.yourself.dev/ipfs/QmX3Mnas5cQa1miegi4bj7Dd2rbqWQKtQsQWwCtHS8NZzn?filename=MDIP%20Auth%20Callout.png"/></a>
+	                <TableCell>
+                            <Button variant="contained" color="secondary" onClick={() => copyToClipboard(challengeDID)} disabled={challengeCopied}>
+                                Copy Challenge DID
+                            </Button>
                         </TableCell>
-                    </TableRow>
+	             </TableRow>
                 </TableBody>
             </Table>
         </div>
@@ -459,6 +459,17 @@ function ViewProfile() {
             setNewName(name);
             setCurrentName(name);
             profile.name = name;
+	    //let schemaDID="did:test:z3v8Auad5D5BewEx44Tva4Zr5uekkBG8vyxaa7PboPjwJhxynqp";
+	    //let issuerDID="did:test:z3v8AuaZLF7tzXd1RNNGBF1pRbAr77G8XfSFjjXsVNmLcLNywbs";
+	    //const vc = await keymaster.bindCredential(schemaDID, profile.did);
+            //expect(vc.issuer).toBe(issuerDID);
+            //expect(vc.credentialSubject.id).toBe(profile.did);
+            //expect(vc.credential.les-troyens-member).toEqual(true);
+            //expect(vc.credential.member-name).toEqual(profile.name);
+            //expect(vc.credential.member-didi).toEqual(profile.did);
+
+	    //profile.credential = await keymaster.issueCredential(vc, 'TBTC');
+		
         }
         catch (error) {
             window.alert(error);

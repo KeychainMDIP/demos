@@ -4,7 +4,6 @@ services:
       context: .
       dockerfile: Dockerfile
     image: mdip_smart_asset/les_troyens
-    network_mode: host
     volumes:
       - ./data:/app/data
     ports:

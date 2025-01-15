@@ -5,9 +5,16 @@ import path from 'path';
 import fs from 'fs';
 import https from 'https';
 import { fileURLToPath } from 'url';
-import * as keymaster from './keymaster-sdk.js';
 import dotenv from 'dotenv';
 import cors from 'cors';
+
+import * as cipher from '@mdip/cipher/node';
+import * as gatekeeper_sdk from '@mdip/gatekeeper/sdk';
+import * as keymaster_sdk from '@mdip/keymaster/sdk';
+import * as keymaster_lib from '@mdip/keymaster/lib';
+import * as db_wallet from '@mdip/keymaster/db/json';
+
+let keymaster;
 
 dotenv.config();
 
@@ -16,10 +23,10 @@ const dbName = 'data/db.json';
 const logins = {};
 
 const roles = {
-    owner: 'les_troyens_owner',
-    admin: 'les_troyens_admin',
-    member: 'les_troyens_member',
-    guest: 'les_troyens_guest',
+    owner: 'music-demo-owner',
+    admin: 'music-demo-admin',
+    moderator: 'music-demo-moderator',
+    member: 'music-demo-member',
 };
 
 app.use(morgan('dev'));
@@ -27,14 +34,14 @@ app.use(express.json());
 
 // Session setup
 app.use(session({
-    secret: 'MDIP-troyens',
+    secret: 'MDIP-music-demo',
     resave: false,
     saveUninitialized: true,
     cookie: { secure: true } // Set to true if using HTTPS
 }));
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-app.use(express.static(path.join(__dirname, 'les_troyens/build')));
+app.use(express.static(path.join(__dirname, 'auth-client/build')));
 
 function loadDb() {
     if (fs.existsSync(dbName)) {
@@ -74,7 +81,18 @@ async function verifyRoles() {
         console.log(`Creating group ${roles.admin}`);
         const did = await keymaster.createGroup(roles.admin);
         await keymaster.addName(roles.admin, did);
-        await keymaster.groupAdd(roles.admin, roles.owner);
+        await keymaster.addGroupMember(roles.admin, roles.owner);
+    }
+
+    try {
+        const docs = await keymaster.resolveDID(roles.moderator);
+        console.log(`${roles.moderator}: ${docs.didDocument.id}`);
+    }
+    catch (error) {
+        console.log(`Creating group ${roles.moderator}`);
+        const did = await keymaster.createGroup(roles.moderator);
+        await keymaster.addName(roles.moderator, did);
+        await keymaster.addGroupMember(roles.moderator, roles.admin);
     }
 
     try {
@@ -85,21 +103,12 @@ async function verifyRoles() {
         console.log(`Creating group ${roles.member}`);
         const did = await keymaster.createGroup(roles.member);
         await keymaster.addName(roles.member, did);
-        await keymaster.groupAdd(roles.member, roles.admin);
+        await keymaster.addGroupMember(roles.member, roles.moderator);
     }
 
-    try {
-        const docs = await keymaster.resolveDID(roles.guest);
-        console.log(`${roles.guest}: ${docs.didDocument.id}`);
+    if (currentId) {
+        await keymaster.setCurrentId(currentId);
     }
-    catch (error) {
-        console.log(`Creating group ${roles.guest}`);
-        const did = await keymaster.createGroup(roles.guest);
-        await keymaster.addName(roles.guest, did);
-        await keymaster.groupAdd(roles.guest, roles.member);
-    }
-
-    await keymaster.setCurrentId(currentId);
 }
 
 async function getRole(user) {
@@ -108,27 +117,28 @@ async function getRole(user) {
             return 'Owner';
         }
 
-        const isAdmin = await keymaster.groupTest(roles.admin, user);
+        const isAdmin = await keymaster.testGroup(roles.admin, user);
 
         if (isAdmin) {
             return 'Admin';
         }
 
-        const isMember = await keymaster.groupTest(roles.member, user);
+        const isModerator = await keymaster.testGroup(roles.moderator, user);
+
+        if (isModerator) {
+            return 'Moderator';
+        }
+
+        const isMember = await keymaster.testGroup(roles.member, user);
 
         if (isMember) {
             return 'Member';
         }
 
-        const isGuest = await keymaster.groupTest(roles.guest, user);
-
-        if (isGuest) {
-            return 'Guest';
-        }
-
         return null;
     }
-    catch {
+    catch (error) {
+        console.log(error);
         return null;
     }
 }
@@ -142,27 +152,27 @@ async function setRole(user, role) {
         }
 
         if (currentRole === 'Admin') {
-            await keymaster.groupRemove(roles.admin, user);
+            await keymaster.removeGroupMember(roles.admin, user);
+        }
+
+        if (currentRole === 'Moderator') {
+            await keymaster.removeGroupMember(roles.moderator, user);
         }
 
         if (currentRole === 'Member') {
-            await keymaster.groupRemove(roles.member, user);
-        }
-
-        if (currentRole === 'Guest') {
-            await keymaster.groupRemove(roles.guest, user);
+            await keymaster.removeGroupMember(roles.member, user);
         }
 
         if (role === 'Admin') {
-            await keymaster.groupAdd(roles.admin, user);
+            await keymaster.addGroupMember(roles.admin, user);
+        }
+
+        if (role === 'Moderator') {
+            await keymaster.addGroupMember(roles.moderator, user);
         }
 
         if (role === 'Member') {
-            await keymaster.groupAdd(roles.member, user);
-        }
-
-        if (role === 'Guest') {
-            await keymaster.groupAdd(roles.guest, user);
+            await keymaster.addGroupMember(roles.member, user);
         }
     }
     catch (error) {
@@ -172,14 +182,14 @@ async function setRole(user, role) {
     return await getRole(user);
 }
 
-async function addGuest(userDID) {
-    await keymaster.groupAdd(roles.guest, userDID);
+async function addMember(userDID) {
+    await keymaster.addGroupMember(roles.member, userDID);
     return await getRole(userDID);
 }
 
 async function userInRole(user, role) {
     try {
-        const isMember = await keymaster.groupTest(role, user);
+        const isMember = await keymaster.testGroup(role, user);
         return isMember;
     }
     catch {
@@ -197,11 +207,11 @@ async function verifyDb() {
             let role = await getRole(userDID);
 
             if (role) {
-                console.log(`Les Troyens: User ${userDID} verified in role ${role}`);
+                console.log(`User ${userDID} verified in role ${role}`);
             }
             else {
-                console.log(`Les Troyens: Adding user ${userDID} to ${roles.guest}...`);
-                role = await addGuest(userDID);
+                console.log(`Adding user ${userDID} to ${roles.member}...`);
+                role = await addMember(userDID);
             }
 
             db.users[userDID].role = role;
@@ -234,19 +244,11 @@ function isAdmin(req, res, next) {
 }
 
 async function loginUser(response) {
-    const verify = await keymaster.verifyResponse(response);
+    const verify = await keymaster.verifyResponse(response, { retries: 10 });
 
     if (verify.match) {
         const challenge = verify.challenge;
         const did = verify.responder;
-
-        logins[challenge] = {
-            response,
-            challenge,
-            did,
-            verify,
-        };
-
         const db = loadDb();
 
         if (!db.users) {
@@ -260,7 +262,7 @@ async function loginUser(response) {
             db.users[did].logins += 1;
         }
         else {
-            const role = await getRole(did) || await addGuest(did);
+            const role = await getRole(did) || await addMember(did);
 
             db.users[did] = {
                 firstLogin: now,
@@ -271,9 +273,16 @@ async function loginUser(response) {
         }
 
         writeDb(db);
+
+        logins[challenge] = {
+            response,
+            challenge,
+            did,
+            verify,
+        };
     }
 
-    return verify.match;
+    return verify;
 }
 
 app.get('/api/version', async (req, res) => {
@@ -288,9 +297,7 @@ app.get('/api/version', async (req, res) => {
 app.get('/api/challenge', async (req, res) => {
     try {
         const challenge = await keymaster.createChallenge({
-            challenge: {
-                callback: `${process.env.AD_HOST_URL}/api/login`
-            }
+            callback: `${process.env.AD_HOST_URL}/api/login`
         });
         req.session.challenge = challenge;
         const challengeURL = `${process.env.AD_WALLET_URL}?challenge=${challenge}`;
@@ -356,22 +363,22 @@ app.get('/api/check-auth', async (req, res) => {
             req.session.user = logins[req.session.challenge];
         }
 
-	const isAuthenticated = req.session.user ? true : false;
+        const isAuthenticated = req.session.user ? true : false;
         const userDID = isAuthenticated ? req.session.user.did : null;
         const db = loadDb();
 
         let isOwner = false;
         let isAdmin = false;
+        let isModerator = false;
         let isMember = false;
-        let isGuest = false;
 
         const profile = isAuthenticated ? db.users[userDID] : null;
 
         if (profile) {
             isOwner = (userDID === ownerDID);
             isAdmin = await userInRole(userDID, roles.admin);
-            isMember= await userInRole(userDID, roles.member);
-            isGuest = await userInRole(userDID, roles.guest);
+            isModerator = await userInRole(userDID, roles.moderator);
+            isMember = await userInRole(userDID, roles.member);
         }
 
         const auth = {
@@ -379,8 +386,8 @@ app.get('/api/check-auth', async (req, res) => {
             userDID,
             isOwner,
             isAdmin,
+            isModerator,
             isMember,
-	    isGuest,
             profile,
         };
 
@@ -476,7 +483,7 @@ app.put('/api/profile/:did/name', isAuthenticated, async (req, res) => {
     }
 });
 
-const validRoles = ['Admin', 'Member', 'Guest'];
+const validRoles = ['Admin', 'Moderator', 'Member'];
 
 app.get('/api/roles', async (req, res) => {
     try {
@@ -529,7 +536,7 @@ app.put('/api/profile/:did/role', isAdmin, async (req, res) => {
 
 app.use((req, res) => {
     if (!req.path.startsWith('/api')) {
-        res.sendFile(path.join(__dirname, 'les_troyens/build', 'index.html'));
+        res.sendFile(path.join(__dirname, 'auth-client/build', 'index.html'));
     } else {
         console.warn(`Warning: Unhandled API endpoint - ${req.method} ${req.originalUrl}`);
         res.status(404).json({ message: 'Endpoint not found' });
@@ -551,13 +558,31 @@ const options = {
 };
 
 https.createServer(options, app).listen(process.env.AD_HOST_PORT, async () => {
-    keymaster.setURL(process.env.AD_KEYMASTER_URL);
-    await keymaster.waitUntilReady();
+    if (process.env.AD_KEYMASTER_URL) {
+        keymaster = keymaster_sdk;
+        await keymaster.start({
+            url: process.env.AD_KEYMASTER_URL,
+            waitUntilReady: true
+        });
+    }
+    else {
+        keymaster = keymaster_lib;
+        await gatekeeper_sdk.start({
+            url: process.env.AD_GATEKEEPER_URL,
+            waitUntilReady: true
+        });
+        await keymaster.start({
+            gatekeeper: gatekeeper_sdk,
+            wallet: db_wallet,
+            cipher: cipher
+        });
+    }
+
     await verifyRoles();
     await verifyDb();
-    console.log(`les_troyens using keymaster at ${process.env.AD_KEYMASTER_URL}`);
-    console.log(`les_troyens using wallet at ${process.env.AD_WALLET_URL}`);
-    console.log(`les_troyens using key file ${process.env.AD_KEY_FILE}`);
-    console.log(`les_troyens using cert file ${process.env.AD_CERT_FILE}`);
-    console.log(`les_troyens listening at ${process.env.AD_HOST_URL}`);
+    console.log(`music-demo using keymaster at ${process.env.AD_KEYMASTER_URL}`);
+    console.log(`music-demo using wallet at ${process.env.AD_WALLET_URL}`);
+    console.log(`music-demo using key file ${process.env.AD_KEY_FILE}`);
+    console.log(`music-demo using cert file ${process.env.AD_CERT_FILE}`);
+    console.log(`music-demo listening at ${process.env.AD_HOST_URL}`);
 });
