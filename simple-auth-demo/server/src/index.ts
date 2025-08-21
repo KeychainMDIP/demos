@@ -369,6 +369,6 @@ app.listen(HOST_PORT, '0.0.0.0', async () => {
         console.log(`auth-demo using gatekeeper at ${GATEKEEPER_URL}`);
     }
 
-    console.log(`auth-demo using wallet at ${WALLET_URL}`);
-    console.log(`auth-demo listening at ${HOST_URL}`);
+    console.log(`simple-auth-demo using wallet at ${WALLET_URL}`);
+    console.log(`simple-auth-demo listening at ${HOST_URL}`);
 });
