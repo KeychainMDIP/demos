@@ -654,6 +654,6 @@ app.listen(HOST_PORT, '0.0.0.0', async () => {
 
     await verifyRoles();
     await verifyDb();
-    console.log(`auth-demo using wallet at ${WALLET_URL}`);
-    console.log(`auth-demo listening at ${HOST_URL}`);
+    console.log(`roles-auth-demo using wallet at ${WALLET_URL}`);
+    console.log(`roles-auth-demo listening at ${HOST_URL}`);
 });

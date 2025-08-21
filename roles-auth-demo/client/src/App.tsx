@@ -127,7 +127,7 @@ function Home() {
         <div className="App">
             <Header title="Home" />
             <Box sx={{ mb:2, width: 400, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="h5">MDIP auth demo</Typography>
+                <Typography variant="h5">MDIP roles auth demo</Typography>
 
                 {isAuthenticated ? (
                     <Button variant="contained" color="primary" onClick={logout} sx={{ mt: 2 }}>
