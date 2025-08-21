@@ -1,0 +1,10 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mdip_smart_asset/les_troyens
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "3690:3690"
