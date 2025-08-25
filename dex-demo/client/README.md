@@ -1,7 +1,7 @@
 # Auth Demo – Client (React)
 
 ### Overview
-This folder contains a React client project for the MDIP Auth Demo’s front-end. It shows login flows, routes for profile pages, and so on.
+This folder contains a React client project for the MDIP DEX Demo’s front-end. It shows login flows, routes for profile pages, and so on.
 
 ### Local Development
 
@@ -23,4 +23,4 @@ This folder contains a React client project for the MDIP Auth Demo’s front-end
 2. Serve those files from your hosting solution.
 
 ### Running with the Server
-If you set the environment variable `AD_SERVE_CLIENT=true` in the server’s .env, and then build this client (`npm run build`), the server can serve these static files. Access the app at the server's URL (e.g. `http://localhost:3000`).
+If you set the environment variable `DEX_SERVE_CLIENT=true` in the server’s .env, and then build this client (`npm run build`), the server can serve these static files. Access the app at the server's URL (e.g. `http://localhost:3009`).
