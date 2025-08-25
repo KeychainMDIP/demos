@@ -18,6 +18,6 @@ Password vaults have any number of items (login credentials for particular servi
 - Admins of vaults can change member roles.
 - The Owner can create vaults.
 
-## [dex-demo]()
+## [dex-demo](dex-demo/README.md)
 Decentralized DID exchange demo.
 
