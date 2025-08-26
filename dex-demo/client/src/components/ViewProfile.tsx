@@ -2,13 +2,15 @@ import { useNavigate, useParams } from "react-router-dom";
 import React, { useEffect, useState } from "react";
 import { useSnackbar } from "../contexts/SnackbarContext.js";
 import { differenceInDays, format } from "date-fns";
-import { Box, Table, TableBody, TableCell, TableRow } from "@mui/material";
+import { Button, Box, Table, TableBody, TableCell, TableRow, TextField } from "@mui/material";
 import { AxiosInstance } from "axios";
 
 function ViewProfile({ api }: { api: AxiosInstance }) {
     const { did } = useParams();
     const navigate = useNavigate();
     const [profile, setProfile] = useState<any>(null);
+    const [currentName, setCurrentName] = useState<string>("");
+    const [newName, setNewName] = useState<string>("");
     const { showSnackbar } = useSnackbar();
 
     useEffect(() => {
@@ -24,6 +26,11 @@ function ViewProfile({ api }: { api: AxiosInstance }) {
                 const profile = getProfile.data;
 
                 setProfile(profile);
+
+                if (profile.name) {
+                    setCurrentName(profile.name);
+                    setNewName(profile.name);
+                }
             }
             catch (error: any) {
                 showSnackbar("Failed to load profile data", 'error');
@@ -40,6 +47,19 @@ function ViewProfile({ api }: { api: AxiosInstance }) {
         const days = differenceInDays(now, date);
 
         return `${format(date, 'yyyy-MM-dd HH:mm:ss')} (${days} days ago)`;
+    }
+
+    async function saveName() {
+        try {
+            const name = newName.trim();
+            await api.put(`/profile/${profile.did}/name`, { name });
+            setNewName(name);
+            setCurrentName(name);
+            profile.name = name;
+        }
+        catch (error: any) {
+            showSnackbar("Failed to set profile name", 'error');
+        }
     }
 
     if (!profile) {
@@ -67,6 +87,38 @@ function ViewProfile({ api }: { api: AxiosInstance }) {
                     <TableRow>
                         <TableCell sx={{ fontWeight: 'bold', width: 120 }}>Login count:</TableCell>
                         <TableCell sx={{ color: '#555' }}>{profile.logins}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                        <TableCell>Name:</TableCell>
+                        <TableCell>
+                            {profile.isUser ? (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                                    <TextField
+                                        label=""
+                                        value={newName}
+                                        onChange={(e) => setNewName(e.target.value)}
+                                        slotProps={{
+                                            htmlInput: {
+                                                maxLength: 20,
+                                            },
+                                        }}
+                                        sx={{ width: 300 }}
+                                        margin="normal"
+                                        fullWidth
+                                    />
+                                    <Button
+                                        variant="contained"
+                                        color="primary"
+                                        onClick={saveName}
+                                        disabled={newName === currentName}
+                                    >
+                                        Save
+                                    </Button>
+                                </Box>
+                            ) : (
+                                currentName
+                            )}
+                        </TableCell>
                     </TableRow>
                 </TableBody>
             </Table>

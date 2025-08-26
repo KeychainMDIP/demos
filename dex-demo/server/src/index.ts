@@ -273,6 +273,33 @@ app.get('/api/profile/:did', isAuthenticated, async (req: Request, res: Response
     }
 });
 
+app.put('/api/profile/:did/name', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+        const did = req.params.did;
+        const { name } = req.body;
+
+        if (!req.session.user || req.session.user.did !== did) {
+            res.status(403).json({ message: 'Forbidden' });
+            return;
+        }
+
+        const currentDb = db.loadDb();
+        if (!currentDb.users || !currentDb.users[did]) {
+            res.status(404).send('Not found');
+            return;
+        }
+
+        currentDb.users[did].name = name;
+        db.writeDb(currentDb);
+
+        res.json({ ok: true, message: `name set to ${name}` });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).send(String(error));
+    }
+});
+
 app.get('/api/did/:id', async (req, res) => {
     try {
         const docs = await keymaster.resolveDID(req.params.id, req.query);
