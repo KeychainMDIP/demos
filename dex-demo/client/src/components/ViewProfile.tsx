@@ -2,15 +2,19 @@ import { useNavigate, useParams } from "react-router-dom";
 import React, { useEffect, useState } from "react";
 import { useSnackbar } from "../contexts/SnackbarContext.js";
 import { differenceInDays, format } from "date-fns";
-import { Button, Box, Table, TableBody, TableCell, TableRow, TextField } from "@mui/material";
+import { Button, Box, Select, MenuItem, Table, TableBody, TableCell, TableRow, TextField } from "@mui/material";
 import { AxiosInstance } from "axios";
 
 function ViewProfile({ api }: { api: AxiosInstance }) {
     const { did } = useParams();
     const navigate = useNavigate();
+    const [auth, setAuth] = useState<any>(null);
     const [profile, setProfile] = useState<any>(null);
     const [currentName, setCurrentName] = useState<string>("");
     const [newName, setNewName] = useState<string>("");
+    const [roleList, setRoleList] = useState<string[]>([]);
+    const [currentRole, setCurrentRole] = useState<string>("");
+    const [newRole, setNewRole] = useState<string>("");
     const { showSnackbar } = useSnackbar();
 
     useEffect(() => {
@@ -22,6 +26,11 @@ function ViewProfile({ api }: { api: AxiosInstance }) {
 
         const init = async () => {
             try {
+                const getAuth = await api.get(`/check-auth`);
+                const auth = getAuth.data;
+
+                setAuth(auth);
+
                 const getProfile = await api.get(`/profile/${did}`);
                 const profile = getProfile.data;
 
@@ -31,6 +40,13 @@ function ViewProfile({ api }: { api: AxiosInstance }) {
                     setCurrentName(profile.name);
                     setNewName(profile.name);
                 }
+
+                if (profile.role) {
+                    setCurrentRole(profile.role);
+                    setNewRole(profile.role);
+                }
+
+                setRoleList(['Admin', 'Moderator', 'Member']);
             }
             catch (error: any) {
                 showSnackbar("Failed to load profile data", 'error');
@@ -62,6 +78,19 @@ function ViewProfile({ api }: { api: AxiosInstance }) {
         }
     }
 
+    async function saveRole() {
+        try {
+            const role = newRole;
+            await api.put(`/profile/${profile.did}/role`, { role });
+            setNewRole(role);
+            setCurrentRole(role);
+            profile.role = role;
+        }
+        catch (error: any) {
+            window.alert(error);
+        }
+    }
+
     if (!profile) {
         return <></>;
     }
@@ -86,10 +115,10 @@ function ViewProfile({ api }: { api: AxiosInstance }) {
                     </TableRow>
                     <TableRow>
                         <TableCell sx={{ fontWeight: 'bold', width: 120 }}>Login count:</TableCell>
-                        <TableCell sx={{ color: '#555' }}>{profile.logins}</TableCell>
+                        <TableCell>{profile.logins}</TableCell>
                     </TableRow>
                     <TableRow>
-                        <TableCell>Name:</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold', width: 120 }}>Name:</TableCell>
                         <TableCell>
                             {profile.isUser ? (
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
@@ -117,6 +146,42 @@ function ViewProfile({ api }: { api: AxiosInstance }) {
                                 </Box>
                             ) : (
                                 currentName
+                            )}
+                        </TableCell>
+                    </TableRow>
+                    <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold', width: 120 }}>Role:</TableCell>
+                        <TableCell>
+                            {auth?.isAdmin && currentRole !== 'Owner' ? (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                                    <Select
+                                        value={newRole}
+                                        displayEmpty
+                                        onChange={(event) => setNewRole(event.target.value)}
+                                        sx={{ width: 300 }}
+                                        fullWidth
+                                    >
+                                        <MenuItem value="" disabled>
+                                            Select role
+                                        </MenuItem>
+                                        {roleList.map((role, index) => (
+                                            <MenuItem value={role} key={index}>
+                                                {role}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+
+                                    <Button
+                                        variant="contained"
+                                        color="primary"
+                                        onClick={saveRole}
+                                        disabled={newRole === currentRole}
+                                    >
+                                        Save
+                                    </Button>
+                                </Box>
+                            ) : (
+                                currentRole
                             )}
                         </TableCell>
                     </TableRow>

@@ -76,6 +76,30 @@ function isAuthenticated(req: Request, res: Response, next: NextFunction): void 
     res.status(401).send('You need to log in first');
 }
 
+function isAdmin(req: Request, res: Response, next: NextFunction): void {
+    isAuthenticated(req, res, async () => {
+        const userDID = req.session.user?.did;
+
+        if (!userDID) {
+            res.status(403).send('Admin access required');
+            return;
+        }
+
+        if (userDID === ownerDID) {
+            return next();
+        }
+
+        const currentDb = db.loadDb();
+        const inAdminRole = !!currentDb.users && currentDb.users[userDID]?.role === 'Admin';
+
+        if (inAdminRole) {
+            return next();
+        }
+        
+        res.status(403).send('Admin access required');
+    });
+}
+
 async function loginUser(response: string): Promise<any> {
     const verify = await keymaster.verifyResponse(response, { retries: 10 });
 
@@ -98,6 +122,14 @@ async function loginUser(response: string): Promise<any> {
                 firstLogin: now,
                 lastLogin: now,
                 logins: 1
+            }
+        }
+
+        if (!currentDb.users[did].role) {
+            if (did === ownerDID) {
+                currentDb.users[did].role = 'Owner';
+            } else {
+                currentDb.users[did].role = 'Member';
             }
         }
 
@@ -219,20 +251,31 @@ app.get('/api/check-auth', async (req: Request, res: Response) => {
         const userDID = isAuthenticated ? req.session.user?.did : null;
         const currentDb = db.loadDb();
 
-        let isOwner = false;
         let profile: User | null = null;
 
         if (isAuthenticated && userDID) {
             profile = currentDb.users?.[userDID] || null;
-            if (userDID === ownerDID) {
-                isOwner = true;
-            }
+        }
+
+        let isOwner = false;
+        let isAdmin = false;
+        let isModerator = false;
+        let isMember = false;
+
+        if (profile) {
+            isOwner = userDID === ownerDID;
+            isAdmin = profile.role === 'Admin' || isOwner;
+            isModerator = profile.role === 'Moderator' || isAdmin;
+            isMember = profile.role === 'Member' || isModerator;
         }
 
         const auth = {
             isAuthenticated,
-            userDID,
             isOwner,
+            isAdmin,
+            isModerator,
+            isMember,
+            userDID,
             profile,
         };
 
@@ -293,6 +336,34 @@ app.put('/api/profile/:did/name', isAuthenticated, async (req: Request, res: Res
         db.writeDb(currentDb);
 
         res.json({ ok: true, message: `name set to ${name}` });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).send(String(error));
+    }
+});
+
+app.put('/api/profile/:did/role', isAdmin, async (req: Request, res: Response) => {
+    try {
+        const did = req.params.did;
+        const { role } = req.body;
+        const validRoles = ['Admin', 'Moderator', 'Member'];
+
+        if (!validRoles.includes(role)) {
+            res.status(400).send(`valid roles include ${validRoles}`);
+            return;
+        }
+
+        const currentDb = db.loadDb();
+        if (!currentDb.users || !currentDb.users[did]) {
+            res.status(404).send('Not found');
+            return;
+        }
+
+        currentDb.users[did].role = role;
+        db.writeDb(currentDb);
+
+        res.json({ ok: true, message: `role set to ${role}` });
     }
     catch (error) {
         console.log(error);
