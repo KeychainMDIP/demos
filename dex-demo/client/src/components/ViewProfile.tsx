@@ -1,11 +1,11 @@
-import {useNavigate, useParams} from "react-router-dom";
-import React, {useEffect, useState} from "react";
-import {useSnackbar} from "../contexts/SnackbarContext.js";
-import {differenceInDays, format} from "date-fns";
-import {Box, Typography} from "@mui/material";
-import {AxiosInstance} from "axios";
+import { useNavigate, useParams } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useSnackbar } from "../contexts/SnackbarContext.js";
+import { differenceInDays, format } from "date-fns";
+import { Box, Table, TableBody, TableCell, TableRow } from "@mui/material";
+import { AxiosInstance } from "axios";
 
-function ViewProfile({ api } : { api: AxiosInstance }) {
+function ViewProfile({ api }: { api: AxiosInstance }) {
     const { did } = useParams();
     const navigate = useNavigate();
     const [profile, setProfile] = useState<any>(null);
@@ -47,122 +47,29 @@ function ViewProfile({ api } : { api: AxiosInstance }) {
     }
 
     return (
-        <Box
-            sx={{
-                width: '100%',
-                maxWidth: 650,
-                p: 3,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '16px',
-            }}
-        >
-            <Box
-                sx={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                }}
-            >
-                <Box
-                    component="span"
-                    sx={{
-                        fontWeight: 'bold',
-                        pr: 2
-                    }}
-                >
-                    DID:
-                </Box>
-                <Box
-                    component="span"
-                    sx={{
-                        flexGrow: 1,
-                        wordBreak: 'break-word',
-                    }}
-                >
-                    <Typography sx={{ fontFamily: 'Courier, monospace', fontSize: '0.9rem' }}>
-                        {profile.did}
-                    </Typography>
-                </Box>
-            </Box>
-
-            <Box
-                sx={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                }}
-            >
-                <Box
-                    component="span"
-                    sx={{
-                        fontWeight: 'bold',
-                        pr: 2,
-                    }}
-                >
-                    First login:
-                </Box>
-                <Box
-                    component="span"
-                    sx={{
-                        flexGrow: 1,
-                        wordBreak: 'break-word',
-                    }}
-                >
-                    {formatDate(profile.firstLogin)}
-                </Box>
-            </Box>
-
-            <Box
-                sx={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                }}
-            >
-                <Box
-                    component="span"
-                    sx={{
-                        fontWeight: 'bold',
-                        pr: 2,
-                    }}
-                >
-                    Last login:
-                </Box>
-                <Box
-                    component="span"
-                    sx={{
-                        flexGrow: 1,
-                        wordBreak: 'break-word',
-                    }}
-                >
-                    {formatDate(profile.lastLogin)}
-                </Box>
-            </Box>
-
-            <Box
-                sx={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                }}
-            >
-                <Box
-                    component="span"
-                    sx={{
-                        fontWeight: 'bold',
-                        pr: 2,
-                    }}
-                >
-                    Login count:
-                </Box>
-                <Box
-                    component="span"
-                    sx={{
-                        flexGrow: 1,
-                        wordBreak: 'break-word',
-                        color: '#555',
-                    }}
-                >
-                    {profile.logins}
-                </Box>
-            </Box>
+        <Box sx={{ width: '100%', maxWidth: 1600, p: 3 }}>
+            <Table sx={{ width: '100%' }}>
+                <TableBody>
+                    <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold', width: 120 }}>DID:</TableCell>
+                        <TableCell sx={{ wordBreak: 'break-all', width: 'calc(100% - 120px)' }}>
+                            <span style={{ fontFamily: 'Courier, monospace', fontSize: '0.9rem', whiteSpace: 'nowrap', display: 'block' }}>{profile.did}</span>
+                        </TableCell>
+                    </TableRow>
+                    <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold', width: 120 }}>First login:</TableCell>
+                        <TableCell>{formatDate(profile.firstLogin)}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold', width: 120 }}>Last login:</TableCell>
+                        <TableCell>{formatDate(profile.lastLogin)}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold', width: 120 }}>Login count:</TableCell>
+                        <TableCell sx={{ color: '#555' }}>{profile.logins}</TableCell>
+                    </TableRow>
+                </TableBody>
+            </Table>
         </Box>
     )
 }
