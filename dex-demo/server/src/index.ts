@@ -384,6 +384,26 @@ process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled rejection at:', promise, 'reason:', reason);
 });
 
+async function verifyWallet(): Promise<void> {
+    const demoName = 'dex-demo';
+    let demoDID: string;
+
+    try {
+        const docs = await keymaster.resolveDID(demoName);
+        if (!docs.didDocument?.id) {
+            throw new Error(`No DID found for ${demoName}`);
+        }
+        demoDID = docs.didDocument.id;
+    }
+    catch (error) {
+        console.log(`Creating ID ${demoName}`);
+        demoDID = await keymaster.createId(demoName);
+    }
+
+    await keymaster.setCurrentId(demoName);
+    console.log(`${demoName} wallet DID ${demoDID}`);
+}
+
 app.listen(HOST_PORT, '0.0.0.0', async () => {
     db = new DbJson();
 
@@ -412,8 +432,16 @@ app.listen(HOST_PORT, '0.0.0.0', async () => {
     });
     console.log(`dex-demo using gatekeeper at ${GATEKEEPER_URL}`);
 
+    try {
+        await verifyWallet();
+    }
+    catch (e: any) {
+        console.error(`Error: ${e.message}`);
+        exit(1);
+    }
+
     if (OWNER_DID) {
-        console.log(`dex-demo using owner DID ${OWNER_DID}`);
+        console.log(`dex-demo owner DID ${OWNER_DID}`);
     }
     else {
         console.log('DEX_OWNER_DID not set');
@@ -423,3 +451,4 @@ app.listen(HOST_PORT, '0.0.0.0', async () => {
     console.log(`dex-demo using wallet at ${WALLET_URL}`);
     console.log(`dex-demo listening at ${HOST_URL}`);
 });
+
