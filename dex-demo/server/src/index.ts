@@ -17,6 +17,8 @@ import KeymasterClient from '@mdip/keymaster/client';
 import WalletJson from '@mdip/keymaster/wallet/json';
 import { DatabaseInterface, User } from './db/interfaces.js';
 import { DbJson } from './db/json.js';
+import e from 'express';
+import { exit } from 'process';
 
 let keymaster: Keymaster | KeymasterClient;
 let db: DatabaseInterface;
@@ -26,8 +28,8 @@ dotenv.config();
 const HOST_PORT = Number(process.env.DEX_HOST_PORT) || 3000;
 const HOST_URL = process.env.DEX_HOST_URL || 'http://localhost:3000';
 const GATEKEEPER_URL = process.env.DEX_GATEKEEPER_URL || 'http://localhost:4224';
-const KEYMASTER_URL = process.env.DEX_KEYMASTER_URL;
 const WALLET_URL = process.env.DEX_WALLET_URL || 'http://localhost:4224';
+const OWNER_DID = process.env.DEX_OWNER_DID;
 
 const app = express();
 const logins: Record<string, {
@@ -36,8 +38,6 @@ const logins: Record<string, {
     did: string;
     verify: any;
 }> = {};
-
-const ownerName = 'dex-demo-owner';
 
 app.use(morgan('dev'));
 app.use(express.json());
@@ -49,25 +49,6 @@ app.use(session({
     saveUninitialized: true,
     cookie: { secure: false } // Set to true if using HTTPS
 }));
-
-let ownerDID = '';
-
-async function verifyOwner(): Promise<void> {
-    try {
-        const docs = await keymaster.resolveDID(ownerName);
-        if (!docs.didDocument?.id) {
-            throw new Error('No DID found');
-        }
-        ownerDID = docs.didDocument.id;
-        console.log(`${ownerName}: ${ownerDID}`);
-    }
-    catch (error) {
-        console.log(`Creating ID ${ownerName}`);
-        ownerDID = await keymaster.createId(ownerName);
-    }
-
-    await keymaster.setCurrentId(ownerName);
-}
 
 function isAuthenticated(req: Request, res: Response, next: NextFunction): void {
     if (req.session.user) {
@@ -85,7 +66,7 @@ function isAdmin(req: Request, res: Response, next: NextFunction): void {
             return;
         }
 
-        if (userDID === ownerDID) {
+        if (userDID === OWNER_DID) {
             return next();
         }
 
@@ -95,7 +76,7 @@ function isAdmin(req: Request, res: Response, next: NextFunction): void {
         if (inAdminRole) {
             return next();
         }
-        
+
         res.status(403).send('Admin access required');
     });
 }
@@ -126,7 +107,7 @@ async function loginUser(response: string): Promise<any> {
         }
 
         if (!currentDb.users[did].role) {
-            if (did === ownerDID) {
+            if (did === OWNER_DID) {
                 currentDb.users[did].role = 'Owner';
             } else {
                 currentDb.users[did].role = 'Member';
@@ -263,7 +244,7 @@ app.get('/api/check-auth', async (req: Request, res: Response) => {
         let isMember = false;
 
         if (profile) {
-            isOwner = userDID === ownerDID;
+            isOwner = userDID === OWNER_DID;
             isAdmin = profile.role === 'Admin' || isOwner;
             isModerator = profile.role === 'Moderator' || isAdmin;
             isMember = profile.role === 'Member' || isModerator;
@@ -415,35 +396,30 @@ app.listen(HOST_PORT, '0.0.0.0', async () => {
         }
     }
 
-    if (KEYMASTER_URL) {
-        keymaster = new KeymasterClient();
-        await keymaster.connect({
-            url: KEYMASTER_URL,
-            waitUntilReady: true,
-            intervalSeconds: 5,
-            chatty: true,
-        });
-        console.log(`dex-demo using keymaster at ${KEYMASTER_URL}`);
+    const gatekeeper = new GatekeeperClient();
+    await gatekeeper.connect({
+        url: GATEKEEPER_URL,
+        waitUntilReady: true,
+        intervalSeconds: 5,
+        chatty: true,
+    });
+    const wallet = new WalletJson();
+    const cipher = new CipherNode();
+    keymaster = new Keymaster({
+        gatekeeper,
+        wallet,
+        cipher
+    });
+    console.log(`dex-demo using gatekeeper at ${GATEKEEPER_URL}`);
+
+    if (OWNER_DID) {
+        console.log(`dex-demo using owner DID ${OWNER_DID}`);
     }
     else {
-        const gatekeeper = new GatekeeperClient();
-        await gatekeeper.connect({
-            url: GATEKEEPER_URL,
-            waitUntilReady: true,
-            intervalSeconds: 5,
-            chatty: true,
-        });
-        const wallet = new WalletJson();
-        const cipher = new CipherNode();
-        keymaster = new Keymaster({
-            gatekeeper,
-            wallet,
-            cipher
-        });
-        console.log(`dex-demo using gatekeeper at ${GATEKEEPER_URL}`);
+        console.log('DEX_OWNER_DID not set');
+        exit(1);
     }
 
-    await verifyOwner();
     console.log(`dex-demo using wallet at ${WALLET_URL}`);
     console.log(`dex-demo listening at ${HOST_URL}`);
 });

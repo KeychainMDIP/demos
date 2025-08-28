@@ -5,10 +5,10 @@ services:
       dockerfile: Dockerfile
     image: keychainmdip/dex-demo
     environment:
+      - DEX_OWNER_DID=${DEX_OWNER_DID}
       - DEX_HOST_PORT=${DEX_HOST_PORT:-3009}
       - DEX_HOST_URL=${DEX_HOST_URL}
       - DEX_GATEKEEPER_URL=${DEX_GATEKEEPER_URL:-http://host.docker.internal:4224}
-      - DEX_KEYMASTER_URL=${DEX_KEYMASTER_URL}
       - DEX_WALLET_URL=${DEX_WALLET_URL:-http://host.docker.internal:4224}
       - DEX_DATABASE=${DEX_DATABASE}
     volumes:
