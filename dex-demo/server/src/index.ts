@@ -17,6 +17,8 @@ import KeymasterClient from '@mdip/keymaster/client';
 import WalletJson from '@mdip/keymaster/wallet/json';
 import { DatabaseInterface, User } from './db/interfaces.js';
 import { DbJson } from './db/json.js';
+import e from 'express';
+import { exit } from 'process';
 
 let keymaster: Keymaster | KeymasterClient;
 let db: DatabaseInterface;
@@ -26,8 +28,8 @@ dotenv.config();
 const HOST_PORT = Number(process.env.DEX_HOST_PORT) || 3000;
 const HOST_URL = process.env.DEX_HOST_URL || 'http://localhost:3000';
 const GATEKEEPER_URL = process.env.DEX_GATEKEEPER_URL || 'http://localhost:4224';
-const KEYMASTER_URL = process.env.DEX_KEYMASTER_URL;
 const WALLET_URL = process.env.DEX_WALLET_URL || 'http://localhost:4224';
+const OWNER_DID = process.env.DEX_OWNER_DID;
 
 const app = express();
 const logins: Record<string, {
@@ -36,8 +38,6 @@ const logins: Record<string, {
     did: string;
     verify: any;
 }> = {};
-
-const ownerName = 'dex-demo-owner';
 
 app.use(morgan('dev'));
 app.use(express.json());
@@ -50,30 +50,35 @@ app.use(session({
     cookie: { secure: false } // Set to true if using HTTPS
 }));
 
-let ownerDID = '';
-
-async function verifyOwner(): Promise<void> {
-    try {
-        const docs = await keymaster.resolveDID(ownerName);
-        if (!docs.didDocument?.id) {
-            throw new Error('No DID found');
-        }
-        ownerDID = docs.didDocument.id;
-        console.log(`${ownerName}: ${ownerDID}`);
-    }
-    catch (error) {
-        console.log(`Creating ID ${ownerName}`);
-        ownerDID = await keymaster.createId(ownerName);
-    }
-
-    await keymaster.setCurrentId(ownerName);
-}
-
 function isAuthenticated(req: Request, res: Response, next: NextFunction): void {
     if (req.session.user) {
         return next();
     }
     res.status(401).send('You need to log in first');
+}
+
+function isAdmin(req: Request, res: Response, next: NextFunction): void {
+    isAuthenticated(req, res, async () => {
+        const userDID = req.session.user?.did;
+
+        if (!userDID) {
+            res.status(403).send('Admin access required');
+            return;
+        }
+
+        if (userDID === OWNER_DID) {
+            return next();
+        }
+
+        const currentDb = db.loadDb();
+        const inAdminRole = !!currentDb.users && currentDb.users[userDID]?.role === 'Admin';
+
+        if (inAdminRole) {
+            return next();
+        }
+
+        res.status(403).send('Admin access required');
+    });
 }
 
 async function loginUser(response: string): Promise<any> {
@@ -98,6 +103,14 @@ async function loginUser(response: string): Promise<any> {
                 firstLogin: now,
                 lastLogin: now,
                 logins: 1
+            }
+        }
+
+        if (!currentDb.users[did].role) {
+            if (did === OWNER_DID) {
+                currentDb.users[did].role = 'Owner';
+            } else {
+                currentDb.users[did].role = 'Member';
             }
         }
 
@@ -219,20 +232,31 @@ app.get('/api/check-auth', async (req: Request, res: Response) => {
         const userDID = isAuthenticated ? req.session.user?.did : null;
         const currentDb = db.loadDb();
 
-        let isOwner = false;
         let profile: User | null = null;
 
         if (isAuthenticated && userDID) {
             profile = currentDb.users?.[userDID] || null;
-            if (userDID === ownerDID) {
-                isOwner = true;
-            }
+        }
+
+        let isOwner = false;
+        let isAdmin = false;
+        let isModerator = false;
+        let isMember = false;
+
+        if (profile) {
+            isOwner = userDID === OWNER_DID;
+            isAdmin = profile.role === 'Admin' || isOwner;
+            isModerator = profile.role === 'Moderator' || isAdmin;
+            isMember = profile.role === 'Member' || isModerator;
         }
 
         const auth = {
             isAuthenticated,
-            userDID,
             isOwner,
+            isAdmin,
+            isModerator,
+            isMember,
+            userDID,
             profile,
         };
 
@@ -273,12 +297,77 @@ app.get('/api/profile/:did', isAuthenticated, async (req: Request, res: Response
     }
 });
 
-app.get('/api/did/:id', async (req, res) => {
+app.put('/api/profile/:did/name', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+        const did = req.params.did;
+        const { name } = req.body;
+
+        if (!req.session.user || req.session.user.did !== did) {
+            res.status(403).json({ message: 'Forbidden' });
+            return;
+        }
+
+        const currentDb = db.loadDb();
+        if (!currentDb.users || !currentDb.users[did]) {
+            res.status(404).send('Not found');
+            return;
+        }
+
+        currentDb.users[did].name = name;
+        db.writeDb(currentDb);
+
+        res.json({ ok: true, message: `name set to ${name}` });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).send(String(error));
+    }
+});
+
+app.put('/api/profile/:did/role', isAdmin, async (req: Request, res: Response) => {
+    try {
+        const did = req.params.did;
+        const { role } = req.body;
+        const validRoles = ['Admin', 'Moderator', 'Member'];
+
+        if (!validRoles.includes(role)) {
+            res.status(400).send(`valid roles include ${validRoles}`);
+            return;
+        }
+
+        const currentDb = db.loadDb();
+        if (!currentDb.users || !currentDb.users[did]) {
+            res.status(404).send('Not found');
+            return;
+        }
+
+        currentDb.users[did].role = role;
+        db.writeDb(currentDb);
+
+        res.json({ ok: true, message: `role set to ${role}` });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).send(String(error));
+    }
+});
+
+app.get('/api/did/:id', async (req: Request, res: Response) => {
     try {
         const docs = await keymaster.resolveDID(req.params.id, req.query);
         res.json({ docs });
     } catch (error: any) {
         res.status(404).send("DID not found");
+    }
+});
+
+app.get('/api/users', isAdmin, async (_: Request, res: Response) => {
+    try {
+        const currentDb = db.loadDb();
+        const users = currentDb.users || {};
+        res.json({ users });
+    } catch (error: any) {
+        res.status(500).send(String(error));
     }
 });
 
@@ -305,6 +394,26 @@ process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled rejection at:', promise, 'reason:', reason);
 });
 
+async function verifyWallet(): Promise<void> {
+    const demoName = 'dex-demo';
+    let demoDID: string;
+
+    try {
+        const docs = await keymaster.resolveDID(demoName);
+        if (!docs.didDocument?.id) {
+            throw new Error(`No DID found for ${demoName}`);
+        }
+        demoDID = docs.didDocument.id;
+    }
+    catch (error) {
+        console.log(`Creating ID ${demoName}`);
+        demoDID = await keymaster.createId(demoName);
+    }
+
+    await keymaster.setCurrentId(demoName);
+    console.log(`${demoName} wallet DID ${demoDID}`);
+}
+
 app.listen(HOST_PORT, '0.0.0.0', async () => {
     db = new DbJson();
 
@@ -317,35 +426,39 @@ app.listen(HOST_PORT, '0.0.0.0', async () => {
         }
     }
 
-    if (KEYMASTER_URL) {
-        keymaster = new KeymasterClient();
-        await keymaster.connect({
-            url: KEYMASTER_URL,
-            waitUntilReady: true,
-            intervalSeconds: 5,
-            chatty: true,
-        });
-        console.log(`dex-demo using keymaster at ${KEYMASTER_URL}`);
+    const gatekeeper = new GatekeeperClient();
+    await gatekeeper.connect({
+        url: GATEKEEPER_URL,
+        waitUntilReady: true,
+        intervalSeconds: 5,
+        chatty: true,
+    });
+    const wallet = new WalletJson();
+    const cipher = new CipherNode();
+    keymaster = new Keymaster({
+        gatekeeper,
+        wallet,
+        cipher
+    });
+    console.log(`dex-demo using gatekeeper at ${GATEKEEPER_URL}`);
+
+    try {
+        await verifyWallet();
     }
-    else {
-        const gatekeeper = new GatekeeperClient();
-        await gatekeeper.connect({
-            url: GATEKEEPER_URL,
-            waitUntilReady: true,
-            intervalSeconds: 5,
-            chatty: true,
-        });
-        const wallet = new WalletJson();
-        const cipher = new CipherNode();
-        keymaster = new Keymaster({
-            gatekeeper,
-            wallet,
-            cipher
-        });
-        console.log(`dex-demo using gatekeeper at ${GATEKEEPER_URL}`);
+    catch (e: any) {
+        console.error(`Error: ${e.message}`);
+        exit(1);
     }
 
-    await verifyOwner();
+    if (OWNER_DID) {
+        console.log(`dex-demo owner DID ${OWNER_DID}`);
+    }
+    else {
+        console.log('DEX_OWNER_DID not set');
+        exit(1);
+    }
+
     console.log(`dex-demo using wallet at ${WALLET_URL}`);
     console.log(`dex-demo listening at ${HOST_URL}`);
 });
+

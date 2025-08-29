@@ -1,29 +1,13 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React from 'react';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 import { Box, List, ListItemButton, ListItemIcon, ListItemText } from '@mui/material';
-import { AccountCircle } from '@mui/icons-material';
+import { AccountCircle, People } from '@mui/icons-material';
 import { AxiosInstance } from "axios";
-import { useSnackbar } from '../contexts/SnackbarContext.js';
-import { AuthState } from "../types.js";
+import { useAuth } from "../contexts/AuthContext";
 
 function Sidebar({ api }: { api: AxiosInstance }) {
-    const [auth, setAuth] = useState<AuthState | null>(null);
+    const auth = useAuth();
     const location = useLocation();
-    const { showSnackbar } = useSnackbar();
-
-    const fetchData = useCallback(async () => {
-        try {
-            const authResponse = await api.get<AuthState>('/check-auth');
-            setAuth(prevAuth => JSON.stringify(prevAuth) !== JSON.stringify(authResponse.data) ? authResponse.data : prevAuth);
-        } catch (error) {
-            showSnackbar('Failed to load sidebar data', 'error');
-            setAuth(null);
-        }
-    }, [showSnackbar, api]);
-
-    useEffect(() => {
-        fetchData();
-    }, [location.pathname, fetchData]);
 
     const commonListItemSx = {
         mb: 0.5,
@@ -40,7 +24,7 @@ function Sidebar({ api }: { api: AxiosInstance }) {
 
     const isPathActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
 
-    if (!auth || !auth.isAuthenticated) {
+    if (auth.loading || !auth.isAuthenticated) {
         return <></>;
     }
 
@@ -53,10 +37,16 @@ function Sidebar({ api }: { api: AxiosInstance }) {
             }}
         >
             <List component="nav" dense>
-                {auth?.isAuthenticated && (
+                {auth.isAuthenticated && (
                     <ListItemButton component={RouterLink} to={`/profile/${auth.userDID}`} sx={commonListItemSx} selected={isPathActive(`/profile/${auth.userDID}`)}>
                         <ListItemIcon sx={{ minWidth: 32 }}><AccountCircle /></ListItemIcon>
                         <ListItemText primary="Profile" />
+                    </ListItemButton>
+                )}
+                {auth.isAdmin && (
+                    <ListItemButton component={RouterLink} to={`/users`} sx={commonListItemSx} selected={isPathActive(`/users`)}>
+                        <ListItemIcon sx={{ minWidth: 32 }}><People /></ListItemIcon>
+                        <ListItemText primary="Users" />
                     </ListItemButton>
                 )}
             </List>

@@ -1,12 +1,14 @@
-import React, {useEffect, useRef, useState} from "react";
-import {useNavigate} from "react-router-dom";
-import {useSnackbar} from "../contexts/SnackbarContext.js";
-import {AuthState} from "../types.js";
-import {Box, Button, TextField, Typography} from "@mui/material";
-import {QRCodeSVG} from "qrcode.react";
-import {AxiosInstance} from "axios";
+import React, { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useSnackbar } from "../contexts/SnackbarContext.js";
+import { useAuth } from "../contexts/AuthContext";
+import { Box, Button, TextField, Typography } from "@mui/material";
+import { QRCodeSVG } from "qrcode.react";
+import { AxiosInstance } from "axios";
 
-function ViewLogin({ api } : { api: AxiosInstance }) {
+function ViewLogin({ api }: { api: AxiosInstance }) {
+    const auth = useAuth();
+
     const [challengeDID, setChallengeDID] = useState<string>('');
     const [responseDID, setResponseDID] = useState<string>('');
     const [loggingIn, setLoggingIn] = useState<boolean>(false);
@@ -21,17 +23,7 @@ function ViewLogin({ api } : { api: AxiosInstance }) {
         const init = async () => {
             try {
                 intervalIdRef.current = window.setInterval(async () => {
-                    try {
-                        const response = await api.get<AuthState>(`/check-auth`);
-                        if (response.data.isAuthenticated) {
-                            if (intervalIdRef.current) {
-                                clearInterval(intervalIdRef.current);
-                            }
-                            navigate('/');
-                        }
-                    } catch (error: any) {
-                        showSnackbar('Failed to check auth status', 'error');
-                    }
+                    auth.refreshAuth();
                 }, 1000); // Check every second
 
                 const response = await api.get(`/challenge`);
@@ -53,6 +45,16 @@ function ViewLogin({ api } : { api: AxiosInstance }) {
             }
         }
     }, [navigate, showSnackbar]);
+
+    useEffect(() => {
+        if (auth.isAuthenticated) {
+            // This effect runs whenever auth.isAuthenticated changes
+            if (intervalIdRef.current) {
+                clearInterval(intervalIdRef.current);
+            }
+            navigate('/');
+        }
+    }, [auth.isAuthenticated, navigate]);
 
     async function login() {
         setLoggingIn(true);
