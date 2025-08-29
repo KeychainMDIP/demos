@@ -83,7 +83,7 @@ function ViewProfile({ api }: { api: AxiosInstance }) {
             profile.role = role;
         }
         catch (error: any) {
-            window.alert(error);
+            showSnackbar("Failed to set profile role", 'error');
         }
     }
 
