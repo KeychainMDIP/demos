@@ -1,51 +1,26 @@
-import React, { useEffect, useState } from "react";
-import { AuthState } from "../types.js";
-import { useNavigate } from "react-router-dom";
-import { useSnackbar } from "../contexts/SnackbarContext.js";
+import React from "react";
 import { Box, Typography } from "@mui/material";
 import { AxiosInstance } from "axios";
+import { useAuth } from "../contexts/AuthContext";
 
 function Home({ api }: { api: AxiosInstance }) {
-    const [authData, setAuthData] = useState<AuthState | null>(null);
-    const navigate = useNavigate();
-    const { showSnackbar } = useSnackbar();
+    const auth = useAuth();
 
-    useEffect(() => {
-        const determineInitialView = async () => {
-            try {
-                const authResponse = await api.get<AuthState>('/check-auth');
-                const currentAuth = authResponse.data;
-                setAuthData(currentAuth);
-
-                if (currentAuth && currentAuth.isAuthenticated) {
-                }
-            } catch (error: any) {
-                showSnackbar('Error determining initial view', 'error');
-                setAuthData({ isAuthenticated: false, userDID: '', isOwner: false, isAdmin: false, isModerator: false, isMember: false });
-            }
-        };
-
-        determineInitialView();
-    }, [navigate, showSnackbar]);
-
-    if (authData) {
-        if (authData.isAuthenticated) {
-            return (
-                <Box sx={{ p: 3, textAlign: 'center' }}>
-                    <Typography variant="h6">Welcome, {authData.profile?.name || authData.userDID}</Typography>
-                </Box>
-            );
-        } else {
-            return (
-                <Box sx={{ p: 3, textAlign: 'center' }}>
-                    <Typography variant="h6">Welcome to the DEX Demo</Typography>
-                    <Typography sx={{ mt: 2 }}>Please login to buy/sell DID assets.</Typography>
-                </Box>
-            );
-        }
+    if (auth.loading) {
+        return <Box sx={{ p: 3, textAlign: 'center' }}><Typography>Loading...</Typography></Box>;
     }
-
-    return <Box sx={{ p: 3, textAlign: 'center' }}><Typography>Could not load application state. Please try refreshing.</Typography></Box>;
+    return (
+        <Box sx={{ p: 3, textAlign: 'center' }}>
+            <Typography variant="h6">Welcome, {auth.isAuthenticated ? (auth.profile?.name || auth.userDID) : "to the DEX Demo"}</Typography>
+            {!auth.isAuthenticated && (
+                <Typography sx={{ mt: 2 }}>Please login to buy/sell DID assets.</Typography>
+            )}
+            <Box sx={{ mt: 4, textAlign: 'left', fontFamily: 'monospace', fontSize: '0.95rem', background: '#f5f5f5', p: 2, borderRadius: 2 }}>
+                <strong>Auth Context:</strong>
+                <pre>{JSON.stringify(auth, null, 2)}</pre>
+            </Box>
+        </Box>
+    );
 }
 
 export default Home;
