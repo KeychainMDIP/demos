@@ -15,10 +15,6 @@ function Home({ api }: { api: AxiosInstance }) {
             {!auth.isAuthenticated && (
                 <Typography sx={{ mt: 2 }}>Please login to buy/sell DID assets.</Typography>
             )}
-            <Box sx={{ mt: 4, textAlign: 'left', fontFamily: 'monospace', fontSize: '0.95rem', background: '#f5f5f5', p: 2, borderRadius: 2 }}>
-                <strong>Auth Context:</strong>
-                <pre>{JSON.stringify(auth, null, 2)}</pre>
-            </Box>
         </Box>
     );
 }

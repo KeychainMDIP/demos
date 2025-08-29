@@ -194,11 +194,6 @@ function ViewLogin({ api }: { api: AxiosInstance }) {
                     {loggingIn ? 'Logging in...' : 'Login'}
                 </Button>
             </Box>
-
-            <Box sx={{ mt: 4, textAlign: 'left', fontFamily: 'monospace', fontSize: '0.95rem', background: '#f5f5f5', p: 2, borderRadius: 2 }}>
-                <strong>Auth Context:</strong>
-                <pre>{JSON.stringify(auth, null, 2)}</pre>
-            </Box>
         </Box>
     );
 }
