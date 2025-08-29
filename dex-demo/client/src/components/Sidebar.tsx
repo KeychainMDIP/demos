@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 import { Box, List, ListItemButton, ListItemIcon, ListItemText } from '@mui/material';
-import { AccountCircle } from '@mui/icons-material';
+import { AccountCircle, People } from '@mui/icons-material';
 import { AxiosInstance } from "axios";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -41,6 +41,12 @@ function Sidebar({ api }: { api: AxiosInstance }) {
                     <ListItemButton component={RouterLink} to={`/profile/${auth.userDID}`} sx={commonListItemSx} selected={isPathActive(`/profile/${auth.userDID}`)}>
                         <ListItemIcon sx={{ minWidth: 32 }}><AccountCircle /></ListItemIcon>
                         <ListItemText primary="Profile" />
+                    </ListItemButton>
+                )}
+                {auth.isAdmin && (
+                    <ListItemButton component={RouterLink} to={`/users`} sx={commonListItemSx} selected={isPathActive(`/users`)}>
+                        <ListItemIcon sx={{ minWidth: 32 }}><People /></ListItemIcon>
+                        <ListItemText primary="Users" />
                     </ListItemButton>
                 )}
             </List>

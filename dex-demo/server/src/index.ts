@@ -352,12 +352,22 @@ app.put('/api/profile/:did/role', isAdmin, async (req: Request, res: Response) =
     }
 });
 
-app.get('/api/did/:id', async (req, res) => {
+app.get('/api/did/:id', async (req: Request, res: Response) => {
     try {
         const docs = await keymaster.resolveDID(req.params.id, req.query);
         res.json({ docs });
     } catch (error: any) {
         res.status(404).send("DID not found");
+    }
+});
+
+app.get('/api/users', isAdmin, async (_: Request, res: Response) => {
+    try {
+        const currentDb = db.loadDb();
+        const users = currentDb.users || {};
+        res.json({ users });
+    } catch (error: any) {
+        res.status(500).send(String(error));
     }
 });
 

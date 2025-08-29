@@ -9,7 +9,7 @@ import { AxiosInstance } from "axios";
 function ViewProfile({ api }: { api: AxiosInstance }) {
     const { did } = useParams();
     const navigate = useNavigate();
-    const auth = useAuth(); // <-- get auth state from context
+    const auth = useAuth();
     const [profile, setProfile] = useState<any>(null);
     const [currentName, setCurrentName] = useState<string>("");
     const [newName, setNewName] = useState<string>("");
