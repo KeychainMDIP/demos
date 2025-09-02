@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSnackbar } from "../contexts/SnackbarContext.js";
+import { useApi } from "../contexts/ApiContext.js";
 import { useAuth } from "../contexts/AuthContext";
 import { differenceInDays, format } from "date-fns";
 import { Button, Box, Select, MenuItem, Table, TableBody, TableCell, TableRow, TextField } from "@mui/material";
-import { AxiosInstance } from "axios";
 
-function ViewProfile({ api }: { api: AxiosInstance }) {
+function ViewProfile() {
     const { did } = useParams();
     const navigate = useNavigate();
+    const api = useApi();
     const auth = useAuth();
+
     const [profile, setProfile] = useState<any>(null);
     const [currentName, setCurrentName] = useState<string>("");
     const [newName, setNewName] = useState<string>("");

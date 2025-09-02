@@ -7,9 +7,10 @@ import {
 import {
     Box,
 } from '@mui/material';
-import axios from 'axios';
-import { SnackbarProvider } from './contexts/SnackbarContext.js';
+
+import { ApiProvider } from './contexts/ApiContext';
 import { AuthProvider } from './contexts/AuthContext';
+import { SnackbarProvider } from './contexts/SnackbarContext.js';
 import Header from './components/Header.js';
 import Sidebar from './components/Sidebar.js';
 import Home from './components/Home.js';
@@ -21,17 +22,12 @@ import ViewUsers from './components/ViewUsers.js';
 import NotFound from './components/NotFound.js';
 import JsonViewer from "./components/JsonViewer.js";
 
-const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || '/api',
-    withCredentials: true,
-});
-
 function AppLayout() {
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', maxWidth: '900px' }}>
-            <Header api={api} />
+            <Header />
             <Box sx={{ display: 'flex', flexGrow: 1, width: '100%' }}>
-                <Sidebar api={api} />
+                <Sidebar />
                 <Box
                     sx={{
                         width: '100%',
@@ -40,13 +36,13 @@ function AppLayout() {
                     }}
                 >
                     <Routes>
-                        <Route path="/" element={<Home api={api} />} />
-                        <Route path="/login" element={<ViewLogin api={api} />} />
-                        <Route path="/logout" element={<ViewLogout api={api} />} />
-                        <Route path="/profile/:did" element={<ViewProfile api={api} />} />
-                        <Route path="/settings/:did" element={<ViewSettings api={api} />} />
-                        <Route path="/users" element={<ViewUsers api={api} />} />
-                        <Route path="/search" element={<JsonViewer api={api} />} />
+                        <Route path="/" element={<Home />} />
+                        <Route path="/login" element={<ViewLogin />} />
+                        <Route path="/logout" element={<ViewLogout />} />
+                        <Route path="/profile/:did" element={<ViewProfile />} />
+                        <Route path="/settings/:did" element={<ViewSettings />} />
+                        <Route path="/users" element={<ViewUsers />} />
+                        <Route path="/search" element={<JsonViewer />} />
                         <Route path="*" element={<NotFound />} />
                     </Routes>
                 </Box>
@@ -57,13 +53,15 @@ function AppLayout() {
 
 function App() {
     return (
-        <SnackbarProvider>
+        <ApiProvider>
             <AuthProvider>
-                <Router>
-                    <AppLayout />
-                </Router>
+                <SnackbarProvider>
+                    <Router>
+                        <AppLayout />
+                    </Router>
+                </SnackbarProvider>
             </AuthProvider>
-        </SnackbarProvider>
+        </ApiProvider>
     );
 }
 

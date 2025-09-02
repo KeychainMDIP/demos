@@ -2,10 +2,9 @@ import React from 'react';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 import { Box, List, ListItemButton, ListItemIcon, ListItemText } from '@mui/material';
 import { AccountCircle, People, Settings } from '@mui/icons-material';
-import { AxiosInstance } from "axios";
 import { useAuth } from "../contexts/AuthContext";
 
-function Sidebar({ api }: { api: AxiosInstance }) {
+function Sidebar() {
     const auth = useAuth();
     const location = useLocation();
 
