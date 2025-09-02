@@ -16,6 +16,7 @@ import Home from './components/Home.js';
 import ViewLogin from './components/ViewLogin.js';
 import ViewLogout from './components/ViewLogout.js';
 import ViewProfile from './components/ViewProfile.js';
+import ViewSettings from "./components/ViewSettings.js";
 import ViewUsers from './components/ViewUsers.js';
 import NotFound from './components/NotFound.js';
 import JsonViewer from "./components/JsonViewer.js";
@@ -43,6 +44,7 @@ function AppLayout() {
                         <Route path="/login" element={<ViewLogin api={api} />} />
                         <Route path="/logout" element={<ViewLogout api={api} />} />
                         <Route path="/profile/:did" element={<ViewProfile api={api} />} />
+                        <Route path="/settings/:did" element={<ViewSettings api={api} />} />
                         <Route path="/users" element={<ViewUsers api={api} />} />
                         <Route path="/search" element={<JsonViewer api={api} />} />
                         <Route path="*" element={<NotFound />} />
