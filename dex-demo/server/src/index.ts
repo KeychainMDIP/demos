@@ -114,6 +114,10 @@ async function loginUser(response: string): Promise<any> {
             }
         }
 
+        if (!currentDb.users[did].name) {
+            currentDb.users[did].name = 'Anon';
+        }
+
         db.writeDb(currentDb);
 
         logins[challenge] = {
