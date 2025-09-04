@@ -9,7 +9,7 @@ export class DbJson implements DatabaseInterface {
         this.dbPath = dbPath;
     }
 
-    init(): void {
+    async init(): Promise<void> {
         const dir = path.dirname(this.dbPath);
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
@@ -18,7 +18,7 @@ export class DbJson implements DatabaseInterface {
         if (!fs.existsSync(this.dbPath)) {
             this.writeDb({ users: {} });
         } else {
-            const currentData = this.loadDb();
+            const currentData = await this.loadDb();
             if (!currentData.users) {
                 currentData.users = {};
             }
@@ -26,7 +26,7 @@ export class DbJson implements DatabaseInterface {
         }
     }
 
-    loadDb(): DatabaseStructure {
+    async loadDb(): Promise<DatabaseStructure> {
         if (fs.existsSync(this.dbPath)) {
             try {
                 return JSON.parse(fs.readFileSync(this.dbPath, 'utf-8')) as DatabaseStructure;
@@ -37,9 +37,9 @@ export class DbJson implements DatabaseInterface {
         return { users: {} };
     }
 
-    writeDb(data: DatabaseStructure): void {
+    async writeDb(data: DatabaseStructure): Promise<void> {
         try {
-            fs.writeFileSync(this.dbPath, JSON.stringify(data, null, 4));
+            await fs.promises.writeFile(this.dbPath, JSON.stringify(data, null, 4));
         } catch (error) {
             console.error(`Error writing JSON to ${this.dbPath}:`, error);
         }

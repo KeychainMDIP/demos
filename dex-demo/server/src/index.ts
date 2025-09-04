@@ -13,15 +13,14 @@ import cors from 'cors';
 import CipherNode from '@mdip/cipher/node';
 import GatekeeperClient from '@mdip/gatekeeper/client';
 import Keymaster from '@mdip/keymaster';
-import KeymasterClient from '@mdip/keymaster/client';
 import WalletJson from '@mdip/keymaster/wallet/json';
-import { DatabaseInterface, User } from './db/interfaces.js';
-import { DbJson } from './db/json.js';
+import { User } from './db/interfaces.js';
+import { DbMdip } from './db/mdip.js';
 import e from 'express';
 import { exit } from 'process';
 
-let keymaster: Keymaster | KeymasterClient;
-let db: DatabaseInterface;
+let keymaster: Keymaster;
+let db: DbMdip;
 
 dotenv.config();
 
@@ -30,6 +29,7 @@ const HOST_URL = process.env.DEX_HOST_URL || 'http://localhost:3000';
 const GATEKEEPER_URL = process.env.DEX_GATEKEEPER_URL || 'http://localhost:4224';
 const WALLET_URL = process.env.DEX_WALLET_URL || 'http://localhost:4224';
 const OWNER_DID = process.env.DEX_OWNER_DID;
+const DEMO_NAME = process.env.DEX_DEMO_NAME || 'dex-demo';
 
 const app = express();
 const logins: Record<string, {
@@ -70,7 +70,7 @@ function isAdmin(req: Request, res: Response, next: NextFunction): void {
             return next();
         }
 
-        const currentDb = db.loadDb();
+        const currentDb = await db.loadDb();
         const inAdminRole = !!currentDb.users && currentDb.users[userDID]?.role === 'Admin';
 
         if (inAdminRole) {
@@ -87,7 +87,7 @@ async function loginUser(response: string): Promise<any> {
     if (verify.match) {
         const challenge = verify.challenge;
         const did = verify.responder!;
-        const currentDb = db.loadDb();
+        const currentDb = await db.loadDb();
 
         if (!currentDb.users) {
             currentDb.users = {};
@@ -234,7 +234,7 @@ app.get('/api/check-auth', async (req: Request, res: Response) => {
 
         const isAuthenticated = !!req.session.user;
         const userDID = isAuthenticated ? req.session.user?.did : null;
-        const currentDb = db.loadDb();
+        const currentDb = await db.loadDb();
 
         let profile: User | null = null;
 
@@ -281,7 +281,7 @@ app.get('/api/check-auth', async (req: Request, res: Response) => {
 app.get('/api/profile/:did', isAuthenticated, async (req: Request, res: Response) => {
     try {
         const did = req.params.did;
-        const currentDb = db.loadDb();
+        const currentDb = await db.loadDb();
 
         if (!currentDb.users || !currentDb.users[did]) {
             res.status(404).send('Not found');
@@ -311,7 +311,7 @@ app.put('/api/profile/:did/name', isAuthenticated, async (req: Request, res: Res
             return;
         }
 
-        const currentDb = db.loadDb();
+        const currentDb = await db.loadDb();
         if (!currentDb.users || !currentDb.users[did]) {
             res.status(404).send('Not found');
             return;
@@ -339,7 +339,7 @@ app.put('/api/profile/:did/role', isAdmin, async (req: Request, res: Response) =
             return;
         }
 
-        const currentDb = db.loadDb();
+        const currentDb = await db.loadDb();
         if (!currentDb.users || !currentDb.users[did]) {
             res.status(404).send('Not found');
             return;
@@ -367,7 +367,7 @@ app.get('/api/did/:id', async (req: Request, res: Response) => {
 
 app.get('/api/users', isAdmin, async (_: Request, res: Response) => {
     try {
-        const currentDb = db.loadDb();
+        const currentDb = await db.loadDb();
         const users = currentDb.users || {};
         res.json({ users });
     } catch (error: any) {
@@ -399,35 +399,31 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 async function verifyWallet(): Promise<void> {
-    const demoName = 'dex-demo';
     let demoDID: string;
 
     try {
-        const docs = await keymaster.resolveDID(demoName);
+        const docs = await keymaster.resolveDID(DEMO_NAME);
         if (!docs.didDocument?.id) {
-            throw new Error(`No DID found for ${demoName}`);
+            throw new Error(`No DID found for ${DEMO_NAME}`);
         }
         demoDID = docs.didDocument.id;
     }
     catch (error) {
-        console.log(`Creating ID ${demoName}`);
-        demoDID = await keymaster.createId(demoName);
+        console.log(`Creating ID ${DEMO_NAME}`);
+        demoDID = await keymaster.createId(DEMO_NAME);
     }
 
-    await keymaster.setCurrentId(demoName);
-    console.log(`${demoName} wallet DID ${demoDID}`);
+    await keymaster.setCurrentId(DEMO_NAME);
+    console.log(`${DEMO_NAME} wallet DID ${demoDID}`);
 }
 
 app.listen(HOST_PORT, '0.0.0.0', async () => {
-    db = new DbJson();
-
-    if (db.init) {
-        try {
-            db.init();
-        } catch (e: any) {
-            console.error(`Error initialising database: ${e.message}`);
-            process.exit(1);
-        }
+    if (OWNER_DID) {
+        console.log(`${DEMO_NAME} owner DID ${OWNER_DID}`);
+    }
+    else {
+        console.log('DEX_OWNER_DID not set');
+        exit(1);
     }
 
     const gatekeeper = new GatekeeperClient();
@@ -444,7 +440,7 @@ app.listen(HOST_PORT, '0.0.0.0', async () => {
         wallet,
         cipher
     });
-    console.log(`dex-demo using gatekeeper at ${GATEKEEPER_URL}`);
+    console.log(`${DEMO_NAME} using gatekeeper at ${GATEKEEPER_URL}`);
 
     try {
         await verifyWallet();
@@ -454,15 +450,16 @@ app.listen(HOST_PORT, '0.0.0.0', async () => {
         exit(1);
     }
 
-    if (OWNER_DID) {
-        console.log(`dex-demo owner DID ${OWNER_DID}`);
-    }
-    else {
-        console.log('DEX_OWNER_DID not set');
-        exit(1);
+    db = new DbMdip(keymaster, DEMO_NAME, OWNER_DID!);
+
+    try {
+        await db.init();
+    } catch (e: any) {
+        console.error(`Error initialising database: ${e.message}`);
+        process.exit(1);
     }
 
-    console.log(`dex-demo using wallet at ${WALLET_URL}`);
-    console.log(`dex-demo listening at ${HOST_URL}`);
+    console.log(`${DEMO_NAME} using wallet at ${WALLET_URL}`);
+    console.log(`${DEMO_NAME} listening at ${HOST_URL}`);
 });
 
