@@ -12,7 +12,7 @@ export interface DatabaseStructure {
 }
 
 export interface DatabaseInterface {
-    init?(): void;
-    loadDb(): DatabaseStructure;
-    writeDb(data: DatabaseStructure): void;
+    init(): Promise<void>;
+    loadDb(): Promise<DatabaseStructure>;
+    writeDb(data: DatabaseStructure): Promise<void>;
 }

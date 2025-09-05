@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSnackbar } from "../contexts/SnackbarContext.js";
+import { useApi } from "../contexts/ApiContext.js";
 import { Box, Table, TableBody, TableCell, TableHead, TableRow } from "@mui/material";
-import { AxiosInstance } from "axios";
 
-function ViewUsers({ api }: { api: AxiosInstance }) {
+function ViewUsers() {
     type User = {
         name?: string;
         role?: string;
@@ -14,6 +14,7 @@ function ViewUsers({ api }: { api: AxiosInstance }) {
     };
 
     const navigate = useNavigate();
+    const api = useApi();
     const { showSnackbar } = useSnackbar();
     const [users, setUsers] = useState<Record<string, User> | null>(null);
 
@@ -53,7 +54,9 @@ function ViewUsers({ api }: { api: AxiosInstance }) {
                             <TableCell>
                                 <a href={`/profile/${id}`} style={{ textDecoration: 'none', color: '#1976d2' }}>{user.name || 'Unknown User'}</a>
                             </TableCell>
-                            <TableCell>{user.role}</TableCell>
+                            <TableCell>
+                                <a href={`/settings/${id}`} style={{ textDecoration: 'none', color: '#1976d2' }}>{user.role}</a>
+                            </TableCell>
                             <TableCell>{user.logins}</TableCell>
                             <TableCell>{user.lastLogin}</TableCell>
                         </TableRow>

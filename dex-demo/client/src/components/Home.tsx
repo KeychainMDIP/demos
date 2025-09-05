@@ -1,9 +1,8 @@
 import React from "react";
 import { Box, Typography } from "@mui/material";
-import { AxiosInstance } from "axios";
 import { useAuth } from "../contexts/AuthContext";
 
-function Home({ api }: { api: AxiosInstance }) {
+function Home() {
     const auth = useAuth();
 
     if (auth.loading) {

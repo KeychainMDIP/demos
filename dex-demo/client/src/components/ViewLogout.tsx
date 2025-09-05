@@ -1,11 +1,12 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSnackbar } from "../contexts/SnackbarContext.js";
+import { useApi } from "../contexts/ApiContext.js";
 import { useAuth } from "../contexts/AuthContext";
-import { AxiosInstance } from "axios";
 
-function ViewLogout({ api }: { api: AxiosInstance }) {
+function ViewLogout() {
     const navigate = useNavigate();
+    const api = useApi();
     const auth = useAuth();
     const { showSnackbar } = useSnackbar();
 
