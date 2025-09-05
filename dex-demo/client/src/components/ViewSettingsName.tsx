@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useSnackbar } from "../contexts/SnackbarContext.js";
 import { useApi } from "../contexts/ApiContext.js";
 import { useAuth } from "../contexts/AuthContext.js";
-import { Button, Box, Select, MenuItem, Table, TableBody, TableCell, TableRow, TextField, private_excludeVariablesFromRoot } from "@mui/material";
+import { Button, Box, Select, MenuItem, Table, TableBody, TableCell, TableRow, TextField } from "@mui/material";
 
 function ViewSettingsName() {
     const { did } = useParams();
@@ -18,6 +18,8 @@ function ViewSettingsName() {
     const [roleList, setRoleList] = useState<string[]>([]);
     const [currentRole, setCurrentRole] = useState<string>("");
     const [newRole, setNewRole] = useState<string>("");
+    const [currentTagline, setCurrentTagline] = useState<string>("");
+    const [newTagline, setNewTagline] = useState<string>("");
 
     useEffect(() => {
         if (!did) {
@@ -41,6 +43,11 @@ function ViewSettingsName() {
                 if (profile.role) {
                     setCurrentRole(profile.role);
                     setNewRole(profile.role);
+                }
+
+                if (profile.tagline) {
+                    setCurrentTagline(profile.tagline);
+                    setNewTagline(profile.tagline);
                 }
 
                 setRoleList(['Admin', 'Moderator', 'Member']);
@@ -80,16 +87,31 @@ function ViewSettingsName() {
         }
     }
 
+    async function saveTagline() {
+        try {
+            const tagline = newTagline;
+            await api.put(`/profile/${profile.did}/tagline`, { tagline });
+            setNewTagline(tagline);
+            setCurrentTagline(tagline);
+            profile.tagline = tagline;
+        }
+        catch (error: any) {
+            showSnackbar("Failed to set profile tagline", 'error');
+        }
+    }
+
     if (!profile) {
         return <></>;
     }
+
+    const labelSx = { fontWeight: 'bold', width: 60 }
 
     return (
         <Box sx={{ width: '100%', maxWidth: 1600, p: 3 }}>
             <Table sx={{ width: '100%' }}>
                 <TableBody>
                     <TableRow>
-                        <TableCell sx={{ fontWeight: 'bold', width: 120 }}>Name:</TableCell>
+                        <TableCell sx={labelSx}>Name:</TableCell>
                         <TableCell>
                             {profile.isUser ? (
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
@@ -121,7 +143,39 @@ function ViewSettingsName() {
                         </TableCell>
                     </TableRow>
                     <TableRow>
-                        <TableCell sx={{ fontWeight: 'bold', width: 120 }}>Role:</TableCell>
+                        <TableCell sx={labelSx}>Tagline:</TableCell>
+                        <TableCell>
+                            {profile.isUser ? (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                                    <TextField
+                                        label=""
+                                        value={newTagline}
+                                        onChange={(e) => setNewTagline(e.target.value)}
+                                        slotProps={{
+                                            htmlInput: {
+                                                maxLength: 20,
+                                            },
+                                        }}
+                                        sx={{ width: 300 }}
+                                        margin="normal"
+                                        fullWidth
+                                    />
+                                    <Button
+                                        variant="contained"
+                                        color="primary"
+                                        onClick={saveTagline}
+                                        disabled={newTagline === currentTagline}
+                                    >
+                                        Save
+                                    </Button>
+                                </Box>
+                            ) : (
+                                currentTagline
+                            )}
+                        </TableCell>
+                    </TableRow>
+                    <TableRow>
+                        <TableCell sx={labelSx}>Role:</TableCell>
                         <TableCell>
                             {auth.isAdmin && currentRole !== 'Owner' ? (
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
