@@ -36,7 +36,6 @@ function ViewProfile() {
         init();
     }, [did, navigate, showSnackbar]);
 
-
     if (!profile) {
         return <></>;
     }
