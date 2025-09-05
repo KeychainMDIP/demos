@@ -14,13 +14,14 @@ import CipherNode from '@mdip/cipher/node';
 import GatekeeperClient from '@mdip/gatekeeper/client';
 import Keymaster from '@mdip/keymaster';
 import WalletJson from '@mdip/keymaster/wallet/json';
-import { User } from './db/interfaces.js';
+import { DatabaseInterface, User } from './db/interfaces.js';
 import { DbMdip } from './db/mdip.js';
+import { DbJson } from './db/json.js';
 import e from 'express';
 import { exit } from 'process';
 
 let keymaster: Keymaster;
-let db: DbMdip;
+let db: DatabaseInterface;
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ const GATEKEEPER_URL = process.env.DEX_GATEKEEPER_URL || 'http://localhost:4224'
 const WALLET_URL = process.env.DEX_WALLET_URL || 'http://localhost:4224';
 const OWNER_DID = process.env.DEX_OWNER_DID;
 const DEMO_NAME = process.env.DEX_DEMO_NAME || 'dex-demo';
+const DATABASE_TYPE = process.env.DEX_DATABASE_TYPE || 'json'; // 'json' or 'mdip'
 
 const app = express();
 const logins: Record<string, {
@@ -450,7 +452,14 @@ app.listen(HOST_PORT, '0.0.0.0', async () => {
         exit(1);
     }
 
-    db = new DbMdip(keymaster, DEMO_NAME, OWNER_DID!);
+    if (DATABASE_TYPE === 'json') {
+        db = new DbJson();
+    } else if (DATABASE_TYPE === 'mdip') {
+        db = new DbMdip(keymaster, DEMO_NAME, OWNER_DID!);
+    } else {
+        console.error(`Error: Unknown DATABASE_TYPE ${DATABASE_TYPE}`);
+        exit(1);
+    }
 
     try {
         await db.init();

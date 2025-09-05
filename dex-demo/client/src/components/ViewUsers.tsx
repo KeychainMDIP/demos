@@ -54,7 +54,9 @@ function ViewUsers() {
                             <TableCell>
                                 <a href={`/profile/${id}`} style={{ textDecoration: 'none', color: '#1976d2' }}>{user.name || 'Unknown User'}</a>
                             </TableCell>
-                            <TableCell>{user.role}</TableCell>
+                            <TableCell>
+                                <a href={`/settings/${id}`} style={{ textDecoration: 'none', color: '#1976d2' }}>{user.role}</a>
+                            </TableCell>
                             <TableCell>{user.logins}</TableCell>
                             <TableCell>{user.lastLogin}</TableCell>
                         </TableRow>
