@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useSnackbar } from "../contexts/SnackbarContext.js";
 import { useApi } from "../contexts/ApiContext.js";
 import {  Box, Typography } from "@mui/material";
+import AssetGrid from "./AssetGrid.js";
 
 function ViewCollection() {
     const { did } = useParams();
@@ -41,6 +42,7 @@ function ViewCollection() {
     return (
         <Box sx={{ width: '100%', maxWidth: 1600, p: 3 }}>
             <Typography variant="h4">{collection.name} by {collection.profile.name}</Typography>
+            <AssetGrid assets={collection.assets} />
         </Box>
     )
 }
