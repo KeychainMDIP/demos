@@ -461,6 +461,50 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
     }
 });
 
+app.post('/api/collection/:did/add', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+        const { did } = req.params;
+        const { asset } = req.body;
+        const data = await keymaster.resolveAsset(did);
+
+        if (!data) {
+            res.status(404).send("Collection not found");
+            return;
+        }
+
+        const collection = data.collection;
+
+        if (!collection) {
+            res.status(400).send("Not a collection");
+            return;
+        }
+
+        if (collection.owner !== req.session.user?.did) {
+            res.status(403).send("You do not own this collection");
+            return;
+        }
+
+        const clone = await keymaster.cloneAsset(asset);
+
+        if (!clone) {
+            res.status(404).send("Asset to add not found");
+            return;
+        }
+
+        const tokenized = {
+            owner: req.session.user?.did,
+        };
+        await keymaster.updateAsset(clone, { tokenized });
+
+        collection.assets.push(clone);
+        await keymaster.updateAsset(did, { collection });
+
+        res.json({ ok: true, message: 'Asset added to collection' });
+    } catch (error: any) {
+        res.status(500).send("Could not add asset to collection");
+    }
+});
+
 app.get('/api/users', isAdmin, async (_: Request, res: Response) => {
     try {
         const currentDb = await db.loadDb();
