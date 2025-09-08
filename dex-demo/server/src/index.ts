@@ -1,7 +1,7 @@
 import express, {
     Request,
     Response,
-    NextFunction
+    NextFunction,
 } from 'express';
 import session from 'express-session';
 import morgan from 'morgan';
@@ -96,28 +96,38 @@ async function loginUser(response: string): Promise<any> {
         }
 
         const now = new Date().toISOString();
+        let user = currentDb.users[did];
 
-        if (currentDb.users[did]) {
-            currentDb.users[did].lastLogin = now;
-            currentDb.users[did].logins = (currentDb.users[did].logins || 0) + 1;
+        if (user) {
+            user.lastLogin = now;
+            user.logins = (user.logins || 0) + 1;
         } else {
-            currentDb.users[did] = {
+            user = {
                 firstLogin: now,
                 lastLogin: now,
                 logins: 1
-            }
+            };
+            currentDb.users[did] = user;
         }
 
-        if (!currentDb.users[did].role) {
+        if (!user.role) {
             if (did === OWNER_DID) {
-                currentDb.users[did].role = 'Owner';
+                user.role = 'Owner';
             } else {
-                currentDb.users[did].role = 'Member';
+                user.role = 'Member';
             }
         }
 
-        if (!currentDb.users[did].name) {
-            currentDb.users[did].name = 'Anon';
+        if (!user.name) {
+            user.name = 'Anon';
+        }
+
+        if (!user.assets) {
+            user.assets = {
+                created: [],
+                collected: [],
+                collections: [],
+            };
         }
 
         db.writeDb(currentDb);
@@ -290,10 +300,16 @@ app.get('/api/profile/:did', isAuthenticated, async (req: Request, res: Response
             return;
         }
 
-        const profile: User = { ...currentDb.users[did] };
+        const rawProfile = currentDb.users[did];
+        const isUser = (req.session?.user?.did === did);
+        const collections: any[] = [];
 
-        profile.did = did;
-        profile.isUser = (req.session?.user?.did === did);
+        const profile: User = {
+            ...rawProfile,
+            did,
+            isUser,
+            collections,
+        };
 
         res.json(profile);
     }

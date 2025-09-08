@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useSnackbar } from "../contexts/SnackbarContext.js";
 import { useApi } from "../contexts/ApiContext.js";
 import {  Box, Tab, Tabs, Typography } from "@mui/material";
+import CollectionGrid from "./CollectionGrid.js";
 
 function ViewProfile() {
     const { did } = useParams();
@@ -59,6 +60,9 @@ function ViewProfile() {
                 <Tab key="unlisted" value="unlisted" label={'Unlisted'} />
                 {profile.isUser && <Tab key="deleted" value="deleted" label={'Deleted'} />}
             </Tabs>
+            {tab === 'created' &&
+                <CollectionGrid collections={profile.collections} />
+            }
         </Box>
     )
 }
