@@ -35,16 +35,16 @@ function CollectionCard({ collection }: { collection: any }) {
     const titleStyle: React.CSSProperties = {
         marginTop: '8px',
         fontSize: '14px',
-        color: '#ffffff',
+        color: '#000',
     };
 
     return (
         <div style={cardStyle}>
             <div style={imgContainerStyle}>
-                <img src={collection.collection.thumbnail} style={imgStyle} alt={collection.asset.title} />
+                <img src={collection.thumbnail} style={imgStyle} alt={collection.name} />
             </div>
-            <p style={titleStyle}>{collection.asset.title}</p>
-            <p style={titleStyle}>{collection.collection.assets.length} items</p>
+            <p style={titleStyle}>{collection.name}</p>
+            <p style={titleStyle}>{collection.assets.length} items</p>
         </div>
     );
 };

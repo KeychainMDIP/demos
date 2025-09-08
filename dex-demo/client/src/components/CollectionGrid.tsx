@@ -11,7 +11,7 @@ function CollectionGrid({ collections }: { collections: any[] }) {
     return (
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center' }}>
             {collections.map((collection, index) => (
-                <Link key={index} to={`/collection/${collection.xid}`} style={{ margin: '8px', textDecoration: 'none' }}>
+                <Link key={index} to={`/collection/${collection.did}`} style={{ margin: '8px', textDecoration: 'none' }}>
                     <CollectionCard key={index} collection={collection} />
                 </Link>
             ))}

@@ -130,6 +130,11 @@ async function loginUser(response: string): Promise<any> {
             };
         }
 
+        if (user.assets.collections.length === 0) {
+            const collectionId = await createCollection(did);
+            user.assets.collections.push(collectionId);
+        }
+
         db.writeDb(currentDb);
 
         logins[challenge] = {
@@ -141,6 +146,18 @@ async function loginUser(response: string): Promise<any> {
     }
 
     return verify;
+}
+
+async function createCollection(did: string): Promise<string> {
+    const collection = {
+        owner: did,
+        name: "Collection",
+        description: "Default collection",
+        assets: [],
+    };
+
+    const collectionDID = await keymaster.createAsset({ collection });
+    return collectionDID;
 }
 
 const corsOptions = {
@@ -290,7 +307,7 @@ app.get('/api/check-auth', async (req: Request, res: Response) => {
     }
 });
 
-app.get('/api/profile/:did', isAuthenticated, async (req: Request, res: Response) => {
+app.get('/api/profile/:did', async (req: Request, res: Response) => {
     try {
         const did = req.params.did;
         const currentDb = await db.loadDb();
@@ -303,6 +320,20 @@ app.get('/api/profile/:did', isAuthenticated, async (req: Request, res: Response
         const rawProfile = currentDb.users[did];
         const isUser = (req.session?.user?.did === did);
         const collections: any[] = [];
+
+        for (const collectionId of rawProfile.assets?.collections || []) {
+            try {
+                const asset = await keymaster.resolveAsset(collectionId);
+                if (asset && asset.collection) {
+                    collections.push({
+                        did: collectionId,
+                        ...asset.collection,
+                    });
+                }
+            } catch (e) {
+                console.log(`Failed to resolve collection ${collectionId}: ${e}`);
+            }
+        }
 
         const profile: User = {
             ...rawProfile,
@@ -405,6 +436,26 @@ app.get('/api/did/:id', async (req: Request, res: Response) => {
     try {
         const docs = await keymaster.resolveDID(req.params.id, req.query);
         res.json({ docs });
+    } catch (error: any) {
+        res.status(404).send("DID not found");
+    }
+});
+
+app.get('/api/collection/:did', async (req: Request, res: Response) => {
+    try {
+        const currentDb = await db.loadDb();
+        const users = currentDb.users || {};
+        const asset = await keymaster.resolveAsset(req.params.did);
+
+        if (asset.collection) {
+            const profile = users[asset.collection.owner] || { name: 'Unknown User' };
+            asset.collection.profile = profile;
+        } else {
+            res.status(404).send("Not a collection");
+            return;
+        }
+
+        res.json(asset);
     } catch (error: any) {
         res.status(404).send("DID not found");
     }

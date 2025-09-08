@@ -19,6 +19,7 @@ import ViewLogout from './components/ViewLogout.js';
 import ViewProfile from './components/ViewProfile.js';
 import ViewSettings from "./components/ViewSettings.js";
 import ViewUsers from './components/ViewUsers.js';
+import ViewCollection from "./components/ViewCollection";
 import NotFound from './components/NotFound.js';
 import JsonViewer from "./components/JsonViewer.js";
 
@@ -41,6 +42,7 @@ function AppLayout() {
                         <Route path="/logout" element={<ViewLogout />} />
                         <Route path="/profile/:did" element={<ViewProfile />} />
                         <Route path="/settings/:did" element={<ViewSettings />} />
+                        <Route path="/collection/:did" element={<ViewCollection />} />
                         <Route path="/users" element={<ViewUsers />} />
                         <Route path="/search" element={<JsonViewer />} />
                         <Route path="*" element={<NotFound />} />
