@@ -12,7 +12,6 @@ import cors from 'cors';
 
 import CipherNode from '@mdip/cipher/node';
 import GatekeeperClient from '@mdip/gatekeeper/client';
-import KuboClient from '@mdip/ipfs/kubo';
 import Keymaster from '@mdip/keymaster';
 import WalletJson from '@mdip/keymaster/wallet/json';
 import { DatabaseInterface, User } from './db/interfaces.js';
@@ -21,9 +20,9 @@ import { DbJson } from './db/json.js';
 import e from 'express';
 import { exit } from 'process';
 
+let gatekeeper: GatekeeperClient;
 let keymaster: Keymaster;
 let db: DatabaseInterface;
-let ipfs: KuboClient;
 
 dotenv.config();
 
@@ -33,8 +32,7 @@ const GATEKEEPER_URL = process.env.DEX_GATEKEEPER_URL || 'http://localhost:4224'
 const WALLET_URL = process.env.DEX_WALLET_URL || 'http://localhost:4224';
 const OWNER_DID = process.env.DEX_OWNER_DID;
 const DEMO_NAME = process.env.DEX_DEMO_NAME || 'dex-demo';
-const DATABASE_TYPE = process.env.DEX_DATABASE_TYPE || 'json'; // 'json' or 'mdip'
-const IPFS_URL = process.env.DEX_IPFS_URL || 'http://localhost:5001/api/v0';
+const DATABASE_TYPE = process.env.DEX_DATABASE_TYPE || 'json'; // 'json' or 
 
 const app = express();
 const logins: Record<string, {
@@ -536,7 +534,7 @@ app.get('/api/users', isAdmin, async (_: Request, res: Response) => {
 
 app.get('/api/ipfs/:cid', async (req, res) => {
     try {
-        const response = await ipfs.getData(req.params.cid);
+        const response = await gatekeeper.getData(req.params.cid);
         res.set('Content-Type', 'application/octet-stream');
         res.send(response);
     } catch (error: any) {
@@ -595,7 +593,7 @@ app.listen(HOST_PORT, '0.0.0.0', async () => {
         exit(1);
     }
 
-    const gatekeeper = new GatekeeperClient();
+    gatekeeper = new GatekeeperClient();
     await gatekeeper.connect({
         url: GATEKEEPER_URL,
         waitUntilReady: true,
@@ -610,14 +608,6 @@ app.listen(HOST_PORT, '0.0.0.0', async () => {
         cipher
     });
     console.log(`${DEMO_NAME} using gatekeeper at ${GATEKEEPER_URL}`);
-
-    ipfs = await KuboClient.create({
-        url: IPFS_URL,
-        waitUntilReady: true,
-        intervalSeconds: 5,
-        chatty: true,
-    });
-    console.log(`${DEMO_NAME} using IPFS node at ${IPFS_URL}`);
 
     try {
         await verifyWallet();

@@ -10,7 +10,6 @@ services:
       - DEX_HOST_URL=${DEX_HOST_URL}
       - DEX_GATEKEEPER_URL=${DEX_GATEKEEPER_URL:-http://host.docker.internal:4224}
       - DEX_WALLET_URL=${DEX_WALLET_URL:-http://host.docker.internal:4224}
-      - DEX_IPFS_URL=${DEX_IPFS_URL:-http://host.docker.internal:5001/api/v0}
       - DEX_DATABASE=${DEX_DATABASE}
     volumes:
       - ./server/data:/app/server/data
