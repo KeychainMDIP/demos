@@ -25,7 +25,7 @@ import JsonViewer from "./components/JsonViewer.js";
 
 function AppLayout() {
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', maxWidth: '900px' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', width: '95%' }}>
             <Header />
             <Box sx={{ display: 'flex', flexGrow: 1, width: '100%' }}>
                 <Sidebar />
