@@ -41,9 +41,14 @@ function AssetCard({ asset }: { asset: any }) {
     return (
         <div style={cardStyle}>
             <div style={imgContainerStyle}>
-                <img src={asset.thumbnail} style={imgStyle} alt={asset.title} />
+                {asset.image ? (
+                    <img src={`/api/ipfs/${asset.image.cid}`} style={imgStyle} alt={asset.name} />
+
+                ) : (
+                    <div>unknown asset type</div>
+                )}
             </div>
-            <p style={titleStyle}>{asset.title}</p>
+            <p style={titleStyle}>{asset.name || 'no name'}</p>
         </div>
     );
 };

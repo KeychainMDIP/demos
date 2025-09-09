@@ -12,6 +12,7 @@ import cors from 'cors';
 
 import CipherNode from '@mdip/cipher/node';
 import GatekeeperClient from '@mdip/gatekeeper/client';
+import KuboClient from '@mdip/ipfs/kubo';
 import Keymaster from '@mdip/keymaster';
 import WalletJson from '@mdip/keymaster/wallet/json';
 import { DatabaseInterface, User } from './db/interfaces.js';
@@ -22,6 +23,7 @@ import { exit } from 'process';
 
 let keymaster: Keymaster;
 let db: DatabaseInterface;
+let ipfs: KuboClient;
 
 dotenv.config();
 
@@ -32,6 +34,7 @@ const WALLET_URL = process.env.DEX_WALLET_URL || 'http://localhost:4224';
 const OWNER_DID = process.env.DEX_OWNER_DID;
 const DEMO_NAME = process.env.DEX_DEMO_NAME || 'dex-demo';
 const DATABASE_TYPE = process.env.DEX_DATABASE_TYPE || 'json'; // 'json' or 'mdip'
+const IPFS_URL = process.env.DEX_IPFS_URL || 'http://localhost:5001/api/v0';
 
 const app = express();
 const logins: Record<string, {
@@ -447,13 +450,29 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
         const users = currentDb.users || {};
         const asset = await keymaster.resolveAsset(req.params.did);
 
-        if (asset.collection) {
-            const profile = users[asset.collection.owner] || { name: 'Unknown User' };
-            asset.collection.profile = profile;
-        } else {
+        if (!asset.collection) {
             res.status(404).send("Not a collection");
             return;
         }
+
+        const profile = users[asset.collection.owner] || { name: 'Unknown User' };
+        asset.collection.profile = profile;
+
+        const assets = [];
+        for (const assetId of asset.collection.assets) {
+            try {
+                const item = await keymaster.resolveAsset(assetId);
+                if (item) {
+                    assets.push({
+                        did: assetId,
+                        ...item,
+                    });
+                }
+            } catch (e) {
+                console.log(`Failed to resolve asset ${assetId}: ${e}`);
+            }
+        }
+        asset.collection.assets = assets;
 
         res.json(asset);
     } catch (error: any) {
@@ -512,6 +531,16 @@ app.get('/api/users', isAdmin, async (_: Request, res: Response) => {
         res.json({ users });
     } catch (error: any) {
         res.status(500).send(String(error));
+    }
+});
+
+app.get('/api/ipfs/:cid', async (req, res) => {
+    try {
+        const response = await ipfs.getData(req.params.cid);
+        res.set('Content-Type', 'application/octet-stream');
+        res.send(response);
+    } catch (error: any) {
+        res.status(404).send(error.toString());
     }
 });
 
@@ -581,6 +610,14 @@ app.listen(HOST_PORT, '0.0.0.0', async () => {
         cipher
     });
     console.log(`${DEMO_NAME} using gatekeeper at ${GATEKEEPER_URL}`);
+
+    ipfs = await KuboClient.create({
+        url: IPFS_URL,
+        waitUntilReady: true,
+        intervalSeconds: 5,
+        chatty: true,
+    });
+    console.log(`${DEMO_NAME} using IPFS node at ${IPFS_URL}`);
 
     try {
         await verifyWallet();
