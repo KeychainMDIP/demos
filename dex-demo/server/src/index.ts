@@ -32,7 +32,7 @@ const GATEKEEPER_URL = process.env.DEX_GATEKEEPER_URL || 'http://localhost:4224'
 const WALLET_URL = process.env.DEX_WALLET_URL || 'http://localhost:4224';
 const OWNER_DID = process.env.DEX_OWNER_DID;
 const DEMO_NAME = process.env.DEX_DEMO_NAME || 'dex-demo';
-const DATABASE_TYPE = process.env.DEX_DATABASE_TYPE || 'json'; // 'json' or 
+const DATABASE_TYPE = process.env.DEX_DATABASE_TYPE || 'json'; // 'json' or
 
 const app = express();
 const logins: Record<string, {
@@ -437,6 +437,23 @@ app.get('/api/did/:id', async (req: Request, res: Response) => {
     try {
         const docs = await keymaster.resolveDID(req.params.id, req.query);
         res.json({ docs });
+    } catch (error: any) {
+        res.status(404).send("DID not found");
+    }
+});
+
+app.get('/api/asset/:did', async (req: Request, res: Response) => {
+    try {
+        const asset = await keymaster.resolveAsset(req.params.did);
+
+        if (asset.tokenized) {
+            const currentDb = await db.loadDb();
+            const users = currentDb.users || {};
+            const profile = users[asset.tokenized.owner] || { name: 'Unknown User' };
+            asset.profile = profile;
+        }
+        
+        res.json({ asset });
     } catch (error: any) {
         res.status(404).send("DID not found");
     }

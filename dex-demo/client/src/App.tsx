@@ -20,8 +20,10 @@ import ViewProfile from './components/ViewProfile.js';
 import ViewSettings from "./components/ViewSettings.js";
 import ViewUsers from './components/ViewUsers.js';
 import ViewCollection from "./components/ViewCollection";
+import ViewAsset from "./components/ViewAsset.js";
 import NotFound from './components/NotFound.js';
 import JsonViewer from "./components/JsonViewer.js";
+import './App.css';
 
 function AppLayout() {
     return (
@@ -43,6 +45,7 @@ function AppLayout() {
                         <Route path="/profile/:did" element={<ViewProfile />} />
                         <Route path="/settings/:did" element={<ViewSettings />} />
                         <Route path="/collection/:did" element={<ViewCollection />} />
+                        <Route path="/asset/:did" element={<ViewAsset />} />
                         <Route path="/users" element={<ViewUsers />} />
                         <Route path="/search" element={<JsonViewer />} />
                         <Route path="*" element={<NotFound />} />
