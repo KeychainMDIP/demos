@@ -41,7 +41,7 @@ function Header() {
             </Box>
 
             <Typography variant="h4" component="h4">
-                DEX Demo
+                DID Exchange Demo
             </Typography>
 
             {auth.isAuthenticated ? (

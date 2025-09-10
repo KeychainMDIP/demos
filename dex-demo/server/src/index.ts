@@ -451,8 +451,22 @@ app.get('/api/asset/:did', async (req: Request, res: Response) => {
             const users = currentDb.users || {};
             const profile = users[asset.tokenized.owner] || { name: 'Unknown User' };
             asset.profile = profile;
+
+            if (asset.tokenized.collection) {
+                try {
+                    const collection = await keymaster.resolveAsset(asset.tokenized.collection);
+                    if (collection && collection.collection) {
+                        asset.collection = {
+                            did: asset.tokenized.collection,
+                            ...collection.collection,
+                        };
+                    }
+                } catch (e) {
+                    console.log(`Failed to resolve collection ${asset.tokenized.collection}: ${e}`);
+                }
+            }
         }
-        
+
         res.json({ asset });
     } catch (error: any) {
         res.status(404).send("DID not found");
@@ -527,6 +541,7 @@ app.post('/api/collection/:did/add', isAuthenticated, async (req: Request, res: 
 
         const tokenized = {
             owner: req.session.user?.did,
+            collection: did,
         };
         await keymaster.updateAsset(clone, { tokenized });
 
