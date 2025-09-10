@@ -48,7 +48,7 @@ function AssetCard({ asset }: { asset: any }) {
                     <div>unknown asset type</div>
                 )}
             </div>
-            <p style={titleStyle}>{asset.name || 'no name'}</p>
+            <p style={titleStyle}>{asset.title || 'no title'}</p>
         </div>
     );
 };

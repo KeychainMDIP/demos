@@ -473,6 +473,32 @@ app.get('/api/asset/:did', async (req: Request, res: Response) => {
     }
 });
 
+app.patch('/api/asset/:did', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+        const did = req.params.did;
+        const updates = req.body;
+
+        const asset = await keymaster.resolveAsset(did);
+
+        if (!asset) {
+            res.status(404).send("Asset not found");
+            return;
+        }
+
+        const owner = asset.tokenized?.owner;
+
+        if (!req.session.user || req.session.user.did !== owner) {
+            res.status(403).json({ message: 'Forbidden' });
+            return;
+        }
+
+        await keymaster.updateAsset(did, updates);
+        res.json({ ok: true, message: 'Asset updated successfully' });
+    } catch (error: any) {
+        res.status(500).send("Failed to update asset");
+    }
+});
+
 app.get('/api/collection/:did', async (req: Request, res: Response) => {
     try {
         const currentDb = await db.loadDb();

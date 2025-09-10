@@ -1,18 +1,76 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSnackbar } from "../contexts/SnackbarContext.js";
 import { useAuth } from "../contexts/AuthContext.js";
 import { useApi } from "../contexts/ApiContext.js";
-import { Box, Tab, Tabs, Table, TableBody, TableContainer, TableCell, TableRow, Typography } from "@mui/material";
+import {
+    Box,
+    Button,
+    Tab,
+    Tabs,
+    Table,
+    TableBody,
+    TableContainer,
+    TableCell,
+    TableRow,
+    TextField,
+    Typography
+} from "@mui/material";
 
-function ViewAssetMetadata({ asset }: { asset: any }) {
+function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }) {
+    const { did } = useParams();
+    const auth = useAuth();
+    const api = useApi();
+    const { showSnackbar } = useSnackbar();
+    const [newTitle, setNewTitle] = useState<string>(asset.title || "");
+    const [currentTitle, setCurrentTitle] = useState<string>(asset.title || "");
+
+    async function saveTitle() {
+        try {
+            const title = newTitle.trim();
+            await api.patch(`/asset/${did}`, { title });
+            setNewTitle(title);
+            setCurrentTitle(title);
+            onSave();
+        }
+        catch (error: any) {
+            showSnackbar("Failed to set profile name", 'error');
+        }
+    }
+
     return (
         <TableContainer>
             <Table>
                 <TableBody>
                     <TableRow>
                         <TableCell>Title</TableCell>
-                        <TableCell>{asset.name || 'no title'}</TableCell>
+                        {auth.isAuthenticated && auth.userDID === asset.tokenized.owner ? (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                                <TextField
+                                    label=""
+                                    value={newTitle}
+                                    onChange={(e) => setNewTitle(e.target.value)}
+                                    slotProps={{
+                                        htmlInput: {
+                                            maxLength: 20,
+                                        },
+                                    }}
+                                    sx={{ width: 300 }}
+                                    margin="normal"
+                                    fullWidth
+                                />
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    onClick={saveTitle}
+                                    disabled={newTitle === currentTitle}
+                                >
+                                    Save
+                                </Button>
+                            </Box>
+                        ) : (
+                            <TableCell>{asset.title || 'no title'}</TableCell>
+                        )}
                     </TableRow>
                     <TableRow>
                         <TableCell>Collection</TableCell>
@@ -58,28 +116,28 @@ function ViewAsset() {
     const [asset, setAsset] = useState<any>(null);
     const [tab, setTab] = useState<string>("metadata");
 
-    useEffect(() => {
+    const fetchAsset = useCallback(async () => {
         if (!did) {
             showSnackbar("No DID provided for asset.", "error");
             navigate('/');
             return;
         }
 
-        const init = async () => {
-            try {
-                const getAsset = await api.get(`/asset/${did}`);
-                const asset = getAsset.data.asset;
+        try {
+            const getAsset = await api.get(`/asset/${did}`);
+            const asset = getAsset.data.asset;
 
-                setAsset(asset);
-            }
-            catch (error: any) {
-                showSnackbar("Failed to load asset data", 'error');
-                navigate('/');
-            }
-        };
+            setAsset(asset);
+        }
+        catch (error: any) {
+            showSnackbar("Failed to load asset data", 'error');
+            navigate('/');
+        }
+    }, [api, did, navigate, showSnackbar]);
 
-        init();
-    }, [did, navigate, showSnackbar]);
+    useEffect(() => {
+        fetchAsset();
+    }, [did]);
 
     if (!asset || !asset.image) {
         return <></>;
@@ -87,7 +145,7 @@ function ViewAsset() {
 
     return (
         <Box sx={{ width: '100%', maxWidth: 1600, p: 3 }}>
-            <Typography variant="h4">{asset.name || 'no name'} by {asset.profile.name}</Typography>
+            <Typography variant="h4">"{asset.title || 'no title'}" by {asset.profile.name}</Typography>
             <div className="container">
                 <div className="left-pane">
                     <img src={`/api/ipfs/${asset.image.cid}`} alt={asset.name} style={{ width: '100%', height: 'auto' }} />
@@ -110,7 +168,7 @@ function ViewAsset() {
                         <Tab key="history" value="history" label={'History'} />
                     </Tabs>
                     {tab === 'metadata' &&
-                        <ViewAssetMetadata asset={asset} />
+                        <ViewAssetMetadata asset={asset} onSave={fetchAsset} />
                     }
                 </div>
             </div>
