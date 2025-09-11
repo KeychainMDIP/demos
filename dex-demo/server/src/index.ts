@@ -512,7 +512,7 @@ app.post('/api/collection', isAuthenticated, async (req: Request, res: Response)
             res.status(400).json({ message: 'Collection name is required' });
             return;
         }
-        
+
         const did = req.session.user.did;
         const currentDb = await db.loadDb();
         const users = currentDb.users || {};
@@ -522,6 +522,33 @@ app.post('/api/collection', isAuthenticated, async (req: Request, res: Response)
 
         db.writeDb(currentDb);
         res.json({ did: collectionId });
+    } catch (error: any) {
+        res.status(500).send(String(error));
+    }
+});
+
+app.delete('/api/collection/:did', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+        if (!req.session.user?.did) {
+            res.status(403).json({ message: 'Forbidden' });
+            return;
+        }
+
+        const { did } = req.params;
+        const userDID = req.session.user.did;
+        const currentDb = await db.loadDb();
+        const users = currentDb.users || {};
+        const user = users[userDID];
+
+        if (!user) {
+            res.status(404).send('Not found');
+            return;
+        }
+
+        user.assets.collections = user.assets.collections.filter((c: string) => c !== did);
+
+        db.writeDb(currentDb);
+        res.json({ ok: true });
     } catch (error: any) {
         res.status(500).send(String(error));
     }

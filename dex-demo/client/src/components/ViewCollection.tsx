@@ -77,6 +77,18 @@ function ViewCollection() {
         }
     }
 
+    async function removeCollection() {
+        try {
+            const confirmed = window.confirm(`Are you sure you want to remove the collection "${collection.name}"?`);
+            if (confirmed) {
+                await api.delete(`/collection/${did}`);
+                navigate('/');
+            }
+        } catch (error) {
+            showSnackbar('Failed to remove collection', 'error');
+        }
+    }
+
     return (
         <Box sx={{ width: '100%', p: 3 }}>
             <Typography variant="h4">{collection.name} by {collection.owner.name}</Typography>
@@ -87,6 +99,9 @@ function ViewCollection() {
                     </Button>
                     <Button variant="contained" color="primary" onClick={renameCollection}>
                         Rename collection...
+                    </Button>
+                    <Button variant="contained" color="primary" onClick={removeCollection}>
+                        Remove collection...
                     </Button>
                 </Box>
             }
