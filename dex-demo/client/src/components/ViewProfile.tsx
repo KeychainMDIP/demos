@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSnackbar } from "../contexts/SnackbarContext.js";
+import { useAuth } from "../contexts/AuthContext";
 import { useApi } from "../contexts/ApiContext.js";
-import {  Box, Tab, Tabs, Typography } from "@mui/material";
+import { Box, Button, Tab, Tabs, Typography } from "@mui/material";
 import CollectionGrid from "./CollectionGrid.js";
 
 function ViewProfile() {
     const { did } = useParams();
     const navigate = useNavigate();
+    const auth = useAuth();
     const api = useApi();
     const { showSnackbar } = useSnackbar();
 
@@ -41,6 +43,24 @@ function ViewProfile() {
         return <></>;
     }
 
+    async function addCollection() {
+        try {
+            const input = window.prompt("Collection name:");
+
+            if (input) {
+                const name = input.trim();
+                await api.post(`/collection`, { name });
+
+                const getProfile = await api.get(`/profile/${did}`);
+                const profile = getProfile.data;
+
+                setProfile(profile);
+            }
+        } catch (error) {
+            showSnackbar('Failed to add collection', 'error');
+        }
+    }
+
     return (
         <Box sx={{ width: '100%', maxWidth: 1600, p: 3 }}>
             <Typography variant="h4">{profile.name}</Typography>
@@ -61,7 +81,16 @@ function ViewProfile() {
                 {profile.isUser && <Tab key="deleted" value="deleted" label={'Deleted'} />}
             </Tabs>
             {tab === 'created' &&
-                <CollectionGrid collections={profile.collections} />
+                <Box sx={{ width: '100%', p: 3 }}>
+                    {auth.userDID === did &&
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <Button variant="contained" color="primary" onClick={addCollection}>
+                                Add collection...
+                            </Button>
+                        </Box>
+                    }
+                    <CollectionGrid collections={profile.collections} />
+                </Box>
             }
         </Box>
     )
