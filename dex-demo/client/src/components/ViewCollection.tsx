@@ -78,7 +78,7 @@ function ViewCollection() {
     }
 
     return (
-        <Box sx={{ width: '100%', maxWidth: 1600, p: 3 }}>
+        <Box sx={{ width: '100%', p: 3 }}>
             <Typography variant="h4">{collection.name} by {collection.owner.name}</Typography>
             {auth.userDID === collection.owner.did &&
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>

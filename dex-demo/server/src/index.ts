@@ -132,7 +132,7 @@ async function loginUser(response: string): Promise<any> {
         }
 
         if (user.assets.collections.length === 0) {
-            const collectionId = await createCollection(did);
+            const collectionId = await createCollection('Collection', did);
             user.assets.collections.push(collectionId);
         }
 
@@ -149,10 +149,9 @@ async function loginUser(response: string): Promise<any> {
     return verify;
 }
 
-async function createCollection(did: string): Promise<string> {
-    const name = "Collection";
+async function createCollection(name: string, owner: string): Promise<string> {
     const collection = {
-        owner: did,
+        owner,
         assets: [],
     };
 
@@ -328,6 +327,7 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
                     collections.push({
                         did: collectionId,
                         ...asset.collection,
+                        name: asset.name,
                     });
                 }
             } catch (e) {
@@ -496,6 +496,34 @@ app.patch('/api/asset/:did', isAuthenticated, async (req: Request, res: Response
         res.json({ ok: true, message: 'Asset updated successfully' });
     } catch (error: any) {
         res.status(500).send("Failed to update asset");
+    }
+});
+
+app.post('/api/collection', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+        if (!req.session.user?.did) {
+            res.status(403).json({ message: 'Forbidden' });
+            return;
+        }
+
+        const { name } = req.body;
+
+        if (!name || typeof name !== 'string' || name.trim().length === 0) {
+            res.status(400).json({ message: 'Collection name is required' });
+            return;
+        }
+        
+        const did = req.session.user.did;
+        const currentDb = await db.loadDb();
+        const users = currentDb.users || {};
+
+        const collectionId = await createCollection(name, did);
+        users[did].assets.collections.push(collectionId);
+
+        db.writeDb(currentDb);
+        res.json({ did: collectionId });
+    } catch (error: any) {
+        res.status(500).send(String(error));
     }
 });
 
