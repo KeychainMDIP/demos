@@ -59,13 +59,36 @@ function ViewCollection() {
         }
     }
 
+    async function renameCollection() {
+        try {
+            const input = window.prompt("New collection name:", collection.name);
+
+            if (input) {
+                const name = input.trim();
+                await api.patch(`/collection/${did}`, { name });
+
+                const getCollection = await api.get(`/collection/${did}`);
+                const collection = getCollection.data.collection;
+
+                setCollection(collection);
+            }
+        } catch (error) {
+            showSnackbar('Failed to rename collection', 'error');
+        }
+    }
+
     return (
         <Box sx={{ width: '100%', maxWidth: 1600, p: 3 }}>
-            <Typography variant="h4">{collection.name} by {collection.profile.name}</Typography>
-            {auth.userDID === collection.owner &&
-                <Button variant="contained" color="primary" onClick={addAsset}>
-                    Add...
-                </Button>
+            <Typography variant="h4">{collection.name} by {collection.owner.name}</Typography>
+            {auth.userDID === collection.owner.did &&
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <Button variant="contained" color="primary" onClick={addAsset}>
+                        Add asset...
+                    </Button>
+                    <Button variant="contained" color="primary" onClick={renameCollection}>
+                        Rename collection...
+                    </Button>
+                </Box>
             }
             <AssetGrid assets={collection.assets} />
         </Box>

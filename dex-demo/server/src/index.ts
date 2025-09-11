@@ -150,14 +150,13 @@ async function loginUser(response: string): Promise<any> {
 }
 
 async function createCollection(did: string): Promise<string> {
+    const name = "Collection";
     const collection = {
         owner: did,
-        name: "Collection",
-        description: "Default collection",
         assets: [],
     };
 
-    const collectionDID = await keymaster.createAsset({ collection });
+    const collectionDID = await keymaster.createAsset({ name, collection });
     return collectionDID;
 }
 
@@ -503,18 +502,28 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
     try {
         const currentDb = await db.loadDb();
         const users = currentDb.users || {};
-        const asset = await keymaster.resolveAsset(req.params.did);
 
-        if (!asset.collection) {
+        const docs = await keymaster.resolveDID(req.params.did);
+        if (!docs) {
+            res.status(404).send("DID not found");
+            return;
+        }
+
+        const data = docs.didDocumentData as { name?: string; collection?: any };
+
+        if (!data.collection) {
             res.status(404).send("Not a collection");
             return;
         }
 
-        const profile = users[asset.collection.owner] || { name: 'Unknown User' };
-        asset.collection.profile = profile;
+        const profile = users[data.collection.owner] || { name: 'Unknown User' };
+        const owner = {
+            did: data.collection.owner,
+            ...profile,
+        };
 
         const assets = [];
-        for (const assetId of asset.collection.assets) {
+        for (const assetId of data.collection.assets) {
             try {
                 const item = await keymaster.resolveAsset(assetId);
                 if (item) {
@@ -527,11 +536,47 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
                 console.log(`Failed to resolve asset ${assetId}: ${e}`);
             }
         }
-        asset.collection.assets = assets;
 
-        res.json(asset);
+        const collection = {
+            name: data.name,
+            owner,
+            assets,
+        }
+
+        res.json({ collection, docs });
     } catch (error: any) {
         res.status(404).send("DID not found");
+    }
+});
+
+app.patch('/api/collection/:did', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+        const did = req.params.did;
+        const updates = req.body;
+
+        const data = await keymaster.resolveAsset(did);
+
+        if (!data) {
+            res.status(404).send("Collection not found");
+            return;
+        }
+
+        const collection = data.collection;
+
+        if (!collection) {
+            res.status(400).send("Not a collection");
+            return;
+        }
+
+        if (!req.session.user || req.session.user.did !== collection.owner) {
+            res.status(403).json({ message: 'Forbidden' });
+            return;
+        }
+
+        await keymaster.updateAsset(did, updates);
+        res.json({ ok: true, message: 'Collection updated successfully' });
+    } catch (error: any) {
+        res.status(500).send("Failed to update collection");
     }
 });
 
