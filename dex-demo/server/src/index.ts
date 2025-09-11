@@ -449,15 +449,16 @@ app.get('/api/asset/:did', async (req: Request, res: Response) => {
             const currentDb = await db.loadDb();
             const users = currentDb.users || {};
             const profile = users[asset.tokenized.owner] || { name: 'Unknown User' };
-            asset.profile = profile;
+            asset.owner = profile;
 
             if (asset.tokenized.collection) {
                 try {
                     const collection = await keymaster.resolveAsset(asset.tokenized.collection);
                     if (collection && collection.collection) {
                         asset.collection = {
-                            did: asset.tokenized.collection,
                             ...collection.collection,
+                            did: asset.tokenized.collection,
+                            name: collection.name,
                         };
                     }
                 } catch (e) {
@@ -543,7 +544,7 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
             assets,
         }
 
-        res.json({ collection, docs });
+        res.json({ collection });
     } catch (error: any) {
         res.status(404).send("DID not found");
     }

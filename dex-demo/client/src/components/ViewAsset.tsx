@@ -82,8 +82,8 @@ function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }
                     </TableRow>
                     <TableRow>
                         <TableCell>Creator</TableCell>
-                        {asset.profile?.name ? (
-                            <TableCell><a href={`/profile/${asset.tokenized.owner}`}>{asset.profile.name}</a></TableCell>
+                        {asset.owner?.name ? (
+                            <TableCell><a href={`/profile/${asset.tokenized.owner}`}>{asset.owner.name}</a></TableCell>
                         ) : (
                             <TableCell>no creator</TableCell>
                         )}
@@ -145,7 +145,7 @@ function ViewAsset() {
 
     return (
         <Box sx={{ width: '100%', maxWidth: 1600, p: 3 }}>
-            <Typography variant="h4">"{asset.title || 'no title'}" by {asset.profile.name}</Typography>
+            <Typography variant="h4">"{asset.title || 'no title'}" by {asset.owner.name}</Typography>
             <div className="container">
                 <div className="left-pane">
                     <img src={`/api/ipfs/${asset.image.cid}`} alt={asset.name} style={{ width: '100%', height: 'auto' }} />
