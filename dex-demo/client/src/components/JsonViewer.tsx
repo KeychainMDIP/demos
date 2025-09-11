@@ -8,10 +8,11 @@ import JsonView from '@uiw/react-json-view';
 import { useSearchParams } from "react-router-dom";
 import { Box } from "@mui/material";
 import VersionNavigator from "./VersionNavigator.js";
-import { AxiosInstance } from 'axios';
 import { useSnackbar } from '../contexts/SnackbarContext.js';
+import { useApi } from "../contexts/ApiContext.js";
 
-function JsonViewer({ api, didArg, refresh } : { api: AxiosInstance, didArg?: string, refresh?: number }) {
+function JsonViewer({ didArg, refresh } : { didArg?: string, refresh?: number }) {
+    const api = useApi();
     const [aliasDocs, setAliasDocs] = useState<any | undefined>(undefined);
     const [aliasDocsVersion, setAliasDocsVersion] = useState<number>(1);
     const [aliasDocsVersionMax, setAliasDocsVersionMax] = useState<number>(1);

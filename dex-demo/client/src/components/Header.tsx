@@ -1,10 +1,9 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Box, Button, Typography } from "@mui/material";
-import { AxiosInstance } from "axios";
 import { useAuth } from '../contexts/AuthContext';
 
-function Header({ api }: { api: AxiosInstance }) {
+function Header() {
     const navigate = useNavigate();
     const auth = useAuth();
 
@@ -42,7 +41,7 @@ function Header({ api }: { api: AxiosInstance }) {
             </Box>
 
             <Typography variant="h4" component="h4">
-                DEX Demo
+                DID Exchange Demo
             </Typography>
 
             {auth.isAuthenticated ? (

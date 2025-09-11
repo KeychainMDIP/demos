@@ -2,21 +2,22 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSnackbar } from "../contexts/SnackbarContext.js";
 import { useApi } from "../contexts/ApiContext.js";
-import {  Box, Tab, Tabs, Typography } from "@mui/material";
-import CollectionGrid from "./CollectionGrid.js";
+import { Box, Tab, Tabs, Typography } from "@mui/material";
+import ViewSettingsLogin from "./ViewSettingsLogin.js";
+import ViewSettingsName from "./ViewSettingsName.js";
 
-function ViewProfile() {
+function ViewSettings() {
     const { did } = useParams();
     const navigate = useNavigate();
     const api = useApi();
     const { showSnackbar } = useSnackbar();
 
     const [profile, setProfile] = useState<any>(null);
-    const [tab, setTab] = useState<string>("created");
+    const [tab, setTab] = useState<string>("logins");
 
     useEffect(() => {
         if (!did) {
-            showSnackbar("No DID provided for profile.", "error");
+            showSnackbar("No DID provided for settings.", "error");
             navigate('/');
             return;
         }
@@ -43,8 +44,7 @@ function ViewProfile() {
 
     return (
         <Box sx={{ width: '100%', maxWidth: 1600, p: 3 }}>
-            <Typography variant="h4">{profile.name}</Typography>
-            <Typography variant="h5" gutterBottom>{profile.tagline}</Typography>
+            <Typography variant="h4" gutterBottom>{profile.name} Account Settings</Typography>
             <Tabs
                 value={tab}
                 onChange={(_, newTab) => { setTab(newTab); }}
@@ -53,18 +53,19 @@ function ViewProfile() {
                 variant="scrollable"
                 scrollButtons="auto"
             >
-                <Tab key="created" value="created" label={'Created'} />
-                <Tab key="minted" value="minted" label={'Minted'} />
-                <Tab key="collected" value="collected" label={'Collected'} />
-                <Tab key="listed" value="listed" label={'Listed'} />
-                <Tab key="unlisted" value="unlisted" label={'Unlisted'} />
-                {profile.isUser && <Tab key="deleted" value="deleted" label={'Deleted'} />}
+                <Tab key="logins" value="logins" label={'Logins'} />
+                <Tab key="name" value="name" label={'Name'} />
+                <Tab key="collections" value="collections" label={'Collections'} />
+                <Tab key="links" value="links" label={'Links'} />
+                <Tab key="lightning" value="lightning" label={'Lightning'} />
             </Tabs>
-            {tab === 'created' &&
-                <CollectionGrid collections={profile.collections} />
-            }
+            {tab === "logins" && <ViewSettingsLogin />}
+            {tab === "name" && <ViewSettingsName />}
+            {tab === "collections" && <div>Collections settings coming soon...</div>}
+            {tab === "links" && <div>Links settings coming soon...</div>}
+            {tab === "lightning" && <div>Lightning settings coming soon...</div>}
         </Box>
     )
 }
 
-export default ViewProfile;
+export default ViewSettings;

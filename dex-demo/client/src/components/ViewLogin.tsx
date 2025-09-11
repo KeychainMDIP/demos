@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSnackbar } from "../contexts/SnackbarContext.js";
+import { useApi } from "../contexts/ApiContext.js";
 import { useAuth } from "../contexts/AuthContext";
 import { Box, Button, TextField, Typography } from "@mui/material";
 import { QRCodeSVG } from "qrcode.react";
-import { AxiosInstance } from "axios";
 
-function ViewLogin({ api }: { api: AxiosInstance }) {
+function ViewLogin() {
+    const api = useApi();
     const auth = useAuth();
 
     const [challengeDID, setChallengeDID] = useState<string>('');

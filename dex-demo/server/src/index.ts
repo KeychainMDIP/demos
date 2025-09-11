@@ -1,7 +1,7 @@
 import express, {
     Request,
     Response,
-    NextFunction
+    NextFunction,
 } from 'express';
 import session from 'express-session';
 import morgan from 'morgan';
@@ -13,14 +13,15 @@ import cors from 'cors';
 import CipherNode from '@mdip/cipher/node';
 import GatekeeperClient from '@mdip/gatekeeper/client';
 import Keymaster from '@mdip/keymaster';
-import KeymasterClient from '@mdip/keymaster/client';
 import WalletJson from '@mdip/keymaster/wallet/json';
 import { DatabaseInterface, User } from './db/interfaces.js';
+import { DbMdip } from './db/mdip.js';
 import { DbJson } from './db/json.js';
 import e from 'express';
 import { exit } from 'process';
 
-let keymaster: Keymaster | KeymasterClient;
+let gatekeeper: GatekeeperClient;
+let keymaster: Keymaster;
 let db: DatabaseInterface;
 
 dotenv.config();
@@ -30,6 +31,8 @@ const HOST_URL = process.env.DEX_HOST_URL || 'http://localhost:3000';
 const GATEKEEPER_URL = process.env.DEX_GATEKEEPER_URL || 'http://localhost:4224';
 const WALLET_URL = process.env.DEX_WALLET_URL || 'http://localhost:4224';
 const OWNER_DID = process.env.DEX_OWNER_DID;
+const DEMO_NAME = process.env.DEX_DEMO_NAME || 'dex-demo';
+const DATABASE_TYPE = process.env.DEX_DATABASE_TYPE || 'json'; // 'json' or
 
 const app = express();
 const logins: Record<string, {
@@ -70,7 +73,7 @@ function isAdmin(req: Request, res: Response, next: NextFunction): void {
             return next();
         }
 
-        const currentDb = db.loadDb();
+        const currentDb = await db.loadDb();
         const inAdminRole = !!currentDb.users && currentDb.users[userDID]?.role === 'Admin';
 
         if (inAdminRole) {
@@ -87,31 +90,50 @@ async function loginUser(response: string): Promise<any> {
     if (verify.match) {
         const challenge = verify.challenge;
         const did = verify.responder!;
-        const currentDb = db.loadDb();
+        const currentDb = await db.loadDb();
 
         if (!currentDb.users) {
             currentDb.users = {};
         }
 
         const now = new Date().toISOString();
+        let user = currentDb.users[did];
 
-        if (currentDb.users[did]) {
-            currentDb.users[did].lastLogin = now;
-            currentDb.users[did].logins = (currentDb.users[did].logins || 0) + 1;
+        if (user) {
+            user.lastLogin = now;
+            user.logins = (user.logins || 0) + 1;
         } else {
-            currentDb.users[did] = {
+            user = {
                 firstLogin: now,
                 lastLogin: now,
                 logins: 1
+            };
+            currentDb.users[did] = user;
+        }
+
+        if (!user.role) {
+            if (did === OWNER_DID) {
+                user.role = 'Owner';
+            } else {
+                user.role = 'Member';
             }
         }
 
-        if (!currentDb.users[did].role) {
-            if (did === OWNER_DID) {
-                currentDb.users[did].role = 'Owner';
-            } else {
-                currentDb.users[did].role = 'Member';
-            }
+        if (!user.name) {
+            user.name = 'Anon';
+        }
+
+        if (!user.assets) {
+            user.assets = {
+                created: [],
+                collected: [],
+                collections: [],
+            };
+        }
+
+        if (user.assets.collections.length === 0) {
+            const collectionId = await createCollection(did);
+            user.assets.collections.push(collectionId);
         }
 
         db.writeDb(currentDb);
@@ -125,6 +147,17 @@ async function loginUser(response: string): Promise<any> {
     }
 
     return verify;
+}
+
+async function createCollection(did: string): Promise<string> {
+    const name = "Collection";
+    const collection = {
+        owner: did,
+        assets: [],
+    };
+
+    const collectionDID = await keymaster.createAsset({ name, collection });
+    return collectionDID;
 }
 
 const corsOptions = {
@@ -230,7 +263,7 @@ app.get('/api/check-auth', async (req: Request, res: Response) => {
 
         const isAuthenticated = !!req.session.user;
         const userDID = isAuthenticated ? req.session.user?.did : null;
-        const currentDb = db.loadDb();
+        const currentDb = await db.loadDb();
 
         let profile: User | null = null;
 
@@ -274,20 +307,40 @@ app.get('/api/check-auth', async (req: Request, res: Response) => {
     }
 });
 
-app.get('/api/profile/:did', isAuthenticated, async (req: Request, res: Response) => {
+app.get('/api/profile/:did', async (req: Request, res: Response) => {
     try {
         const did = req.params.did;
-        const currentDb = db.loadDb();
+        const currentDb = await db.loadDb();
 
         if (!currentDb.users || !currentDb.users[did]) {
             res.status(404).send('Not found');
             return;
         }
 
-        const profile: User = { ...currentDb.users[did] };
+        const rawProfile = currentDb.users[did];
+        const isUser = (req.session?.user?.did === did);
+        const collections: any[] = [];
 
-        profile.did = did;
-        profile.isUser = (req.session?.user?.did === did);
+        for (const collectionId of rawProfile.assets?.collections || []) {
+            try {
+                const asset = await keymaster.resolveAsset(collectionId);
+                if (asset && asset.collection) {
+                    collections.push({
+                        did: collectionId,
+                        ...asset.collection,
+                    });
+                }
+            } catch (e) {
+                console.log(`Failed to resolve collection ${collectionId}: ${e}`);
+            }
+        }
+
+        const profile: User = {
+            ...rawProfile,
+            did,
+            isUser,
+            collections,
+        };
 
         res.json(profile);
     }
@@ -307,7 +360,7 @@ app.put('/api/profile/:did/name', isAuthenticated, async (req: Request, res: Res
             return;
         }
 
-        const currentDb = db.loadDb();
+        const currentDb = await db.loadDb();
         if (!currentDb.users || !currentDb.users[did]) {
             res.status(404).send('Not found');
             return;
@@ -317,6 +370,33 @@ app.put('/api/profile/:did/name', isAuthenticated, async (req: Request, res: Res
         db.writeDb(currentDb);
 
         res.json({ ok: true, message: `name set to ${name}` });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).send(String(error));
+    }
+});
+
+app.put('/api/profile/:did/tagline', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+        const did = req.params.did;
+        const { tagline } = req.body;
+
+        if (!req.session.user || req.session.user.did !== did) {
+            res.status(403).json({ message: 'Forbidden' });
+            return;
+        }
+
+        const currentDb = await db.loadDb();
+        if (!currentDb.users || !currentDb.users[did]) {
+            res.status(404).send('Not found');
+            return;
+        }
+
+        currentDb.users[did].tagline = tagline;
+        db.writeDb(currentDb);
+
+        res.json({ ok: true, message: `tagline set to ${tagline}` });
     }
     catch (error) {
         console.log(error);
@@ -335,7 +415,7 @@ app.put('/api/profile/:did/role', isAdmin, async (req: Request, res: Response) =
             return;
         }
 
-        const currentDb = db.loadDb();
+        const currentDb = await db.loadDb();
         if (!currentDb.users || !currentDb.users[did]) {
             res.status(404).send('Not found');
             return;
@@ -361,13 +441,208 @@ app.get('/api/did/:id', async (req: Request, res: Response) => {
     }
 });
 
+app.get('/api/asset/:did', async (req: Request, res: Response) => {
+    try {
+        const asset = await keymaster.resolveAsset(req.params.did);
+
+        if (asset.tokenized) {
+            const currentDb = await db.loadDb();
+            const users = currentDb.users || {};
+            const profile = users[asset.tokenized.owner] || { name: 'Unknown User' };
+            asset.owner = profile;
+
+            if (asset.tokenized.collection) {
+                try {
+                    const collection = await keymaster.resolveAsset(asset.tokenized.collection);
+                    if (collection && collection.collection) {
+                        asset.collection = {
+                            ...collection.collection,
+                            did: asset.tokenized.collection,
+                            name: collection.name,
+                        };
+                    }
+                } catch (e) {
+                    console.log(`Failed to resolve collection ${asset.tokenized.collection}: ${e}`);
+                }
+            }
+        }
+
+        res.json({ asset });
+    } catch (error: any) {
+        res.status(404).send("DID not found");
+    }
+});
+
+app.patch('/api/asset/:did', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+        const did = req.params.did;
+        const updates = req.body;
+
+        const asset = await keymaster.resolveAsset(did);
+
+        if (!asset) {
+            res.status(404).send("Asset not found");
+            return;
+        }
+
+        const owner = asset.tokenized?.owner;
+
+        if (!req.session.user || req.session.user.did !== owner) {
+            res.status(403).json({ message: 'Forbidden' });
+            return;
+        }
+
+        await keymaster.updateAsset(did, updates);
+        res.json({ ok: true, message: 'Asset updated successfully' });
+    } catch (error: any) {
+        res.status(500).send("Failed to update asset");
+    }
+});
+
+app.get('/api/collection/:did', async (req: Request, res: Response) => {
+    try {
+        const currentDb = await db.loadDb();
+        const users = currentDb.users || {};
+
+        const docs = await keymaster.resolveDID(req.params.did);
+        if (!docs) {
+            res.status(404).send("DID not found");
+            return;
+        }
+
+        const data = docs.didDocumentData as { name?: string; collection?: any };
+
+        if (!data.collection) {
+            res.status(404).send("Not a collection");
+            return;
+        }
+
+        const profile = users[data.collection.owner] || { name: 'Unknown User' };
+        const owner = {
+            did: data.collection.owner,
+            ...profile,
+        };
+
+        const assets = [];
+        for (const assetId of data.collection.assets) {
+            try {
+                const item = await keymaster.resolveAsset(assetId);
+                if (item) {
+                    assets.push({
+                        did: assetId,
+                        ...item,
+                    });
+                }
+            } catch (e) {
+                console.log(`Failed to resolve asset ${assetId}: ${e}`);
+            }
+        }
+
+        const collection = {
+            name: data.name,
+            owner,
+            assets,
+        }
+
+        res.json({ collection });
+    } catch (error: any) {
+        res.status(404).send("DID not found");
+    }
+});
+
+app.patch('/api/collection/:did', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+        const did = req.params.did;
+        const updates = req.body;
+
+        const data = await keymaster.resolveAsset(did);
+
+        if (!data) {
+            res.status(404).send("Collection not found");
+            return;
+        }
+
+        const collection = data.collection;
+
+        if (!collection) {
+            res.status(400).send("Not a collection");
+            return;
+        }
+
+        if (!req.session.user || req.session.user.did !== collection.owner) {
+            res.status(403).json({ message: 'Forbidden' });
+            return;
+        }
+
+        await keymaster.updateAsset(did, updates);
+        res.json({ ok: true, message: 'Collection updated successfully' });
+    } catch (error: any) {
+        res.status(500).send("Failed to update collection");
+    }
+});
+
+app.post('/api/collection/:did/add', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+        const { did } = req.params;
+        const { asset } = req.body;
+        const data = await keymaster.resolveAsset(did);
+
+        if (!data) {
+            res.status(404).send("Collection not found");
+            return;
+        }
+
+        const collection = data.collection;
+
+        if (!collection) {
+            res.status(400).send("Not a collection");
+            return;
+        }
+
+        if (collection.owner !== req.session.user?.did) {
+            res.status(403).send("You do not own this collection");
+            return;
+        }
+
+        const clone = await keymaster.cloneAsset(asset);
+
+        if (!clone) {
+            res.status(404).send("Asset to add not found");
+            return;
+        }
+
+        const tokenized = {
+            owner: req.session.user?.did,
+            collection: did,
+        };
+        await keymaster.updateAsset(clone, { tokenized });
+
+        collection.assets.push(clone);
+        await keymaster.updateAsset(did, { collection });
+
+        res.json({ ok: true, message: 'Asset added to collection' });
+    } catch (error: any) {
+        res.status(500).send("Could not add asset to collection");
+    }
+});
+
 app.get('/api/users', isAdmin, async (_: Request, res: Response) => {
     try {
-        const currentDb = db.loadDb();
+        const currentDb = await db.loadDb();
         const users = currentDb.users || {};
         res.json({ users });
     } catch (error: any) {
         res.status(500).send(String(error));
+    }
+});
+
+app.get('/api/ipfs/:cid', async (req, res) => {
+    try {
+        const response = await gatekeeper.getData(req.params.cid);
+        res.set('Content-Type', 'application/octet-stream');
+        res.send(response);
+    } catch (error: any) {
+        res.status(404).send(error.toString());
     }
 });
 
@@ -395,38 +670,34 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 async function verifyWallet(): Promise<void> {
-    const demoName = 'dex-demo';
     let demoDID: string;
 
     try {
-        const docs = await keymaster.resolveDID(demoName);
+        const docs = await keymaster.resolveDID(DEMO_NAME);
         if (!docs.didDocument?.id) {
-            throw new Error(`No DID found for ${demoName}`);
+            throw new Error(`No DID found for ${DEMO_NAME}`);
         }
         demoDID = docs.didDocument.id;
     }
     catch (error) {
-        console.log(`Creating ID ${demoName}`);
-        demoDID = await keymaster.createId(demoName);
+        console.log(`Creating ID ${DEMO_NAME}`);
+        demoDID = await keymaster.createId(DEMO_NAME);
     }
 
-    await keymaster.setCurrentId(demoName);
-    console.log(`${demoName} wallet DID ${demoDID}`);
+    await keymaster.setCurrentId(DEMO_NAME);
+    console.log(`${DEMO_NAME} wallet DID ${demoDID}`);
 }
 
 app.listen(HOST_PORT, '0.0.0.0', async () => {
-    db = new DbJson();
-
-    if (db.init) {
-        try {
-            db.init();
-        } catch (e: any) {
-            console.error(`Error initialising database: ${e.message}`);
-            process.exit(1);
-        }
+    if (OWNER_DID) {
+        console.log(`${DEMO_NAME} owner DID ${OWNER_DID}`);
+    }
+    else {
+        console.log('DEX_OWNER_DID not set');
+        exit(1);
     }
 
-    const gatekeeper = new GatekeeperClient();
+    gatekeeper = new GatekeeperClient();
     await gatekeeper.connect({
         url: GATEKEEPER_URL,
         waitUntilReady: true,
@@ -440,7 +711,7 @@ app.listen(HOST_PORT, '0.0.0.0', async () => {
         wallet,
         cipher
     });
-    console.log(`dex-demo using gatekeeper at ${GATEKEEPER_URL}`);
+    console.log(`${DEMO_NAME} using gatekeeper at ${GATEKEEPER_URL}`);
 
     try {
         await verifyWallet();
@@ -450,15 +721,23 @@ app.listen(HOST_PORT, '0.0.0.0', async () => {
         exit(1);
     }
 
-    if (OWNER_DID) {
-        console.log(`dex-demo owner DID ${OWNER_DID}`);
-    }
-    else {
-        console.log('DEX_OWNER_DID not set');
+    if (DATABASE_TYPE === 'json') {
+        db = new DbJson();
+    } else if (DATABASE_TYPE === 'mdip') {
+        db = new DbMdip(keymaster, DEMO_NAME, OWNER_DID!);
+    } else {
+        console.error(`Error: Unknown DATABASE_TYPE ${DATABASE_TYPE}`);
         exit(1);
     }
 
-    console.log(`dex-demo using wallet at ${WALLET_URL}`);
-    console.log(`dex-demo listening at ${HOST_URL}`);
+    try {
+        await db.init();
+    } catch (e: any) {
+        console.error(`Error initialising database: ${e.message}`);
+        process.exit(1);
+    }
+
+    console.log(`${DEMO_NAME} using wallet at ${WALLET_URL}`);
+    console.log(`${DEMO_NAME} listening at ${HOST_URL}`);
 });
 
