@@ -16,7 +16,7 @@ export class DbJson implements DatabaseInterface {
             console.log(`Created directory: ${dir}`);
         }
         if (!fs.existsSync(this.dbPath)) {
-            this.writeDb({ users: {} });
+            this.writeDb({ settings: {}, users: {} });
         } else {
             const currentData = await this.loadDb();
             if (!currentData.users) {
@@ -34,7 +34,7 @@ export class DbJson implements DatabaseInterface {
                 console.error(`Error parsing JSON from ${this.dbPath}:`, error);
             }
         }
-        return { users: {} };
+        return { settings: {}, users: {} };
     }
 
     async writeDb(data: DatabaseStructure): Promise<void> {

@@ -20,21 +20,23 @@ function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }
     const auth = useAuth();
     const api = useApi();
     const { showSnackbar } = useSnackbar();
-    const [newTitle, setNewTitle] = useState<string>(asset.title || "");
-    const [currentTitle, setCurrentTitle] = useState<string>(asset.title || "");
+    const [newTitle, setNewTitle] = useState<string>("");
+    const [currentTitle, setCurrentTitle] = useState<string>("");
     const [firstDid, setFirstDid] = useState<string | null>(null);
     const [prevDid, setPrevDid] = useState<string | null>(null);
     const [nextDid, setNextDid] = useState<string | null>(null);
     const [lastDid, setLastDid] = useState<string | null>(null);
 
-    function findAdjacentDids(list: string[], targetDid: string) {
+    function findAdjacentDids() {
+        const list = asset.collection?.assets || [];
+
         let prevDid = null;
         let nextDid = null;
         let firstDid = null;
         let lastDid = null;
 
         for (let i = 0; i < list.length; i++) {
-            if (list[i] === targetDid) {
+            if (list[i] === did) {
                 if (i > 0) {
                     prevDid = list[i - 1];
                 }
@@ -47,13 +49,13 @@ function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }
 
         firstDid = list[0];
 
-        if (firstDid === targetDid) {
+        if (firstDid === did) {
             firstDid = null;
         }
 
         lastDid = list[list.length - 1];
 
-        if (lastDid === targetDid) {
+        if (lastDid === did) {
             lastDid = null;
         }
 
@@ -62,12 +64,15 @@ function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }
 
     useEffect(() => {
         const init = async () => {
-            const { firstDid, prevDid, nextDid, lastDid } = findAdjacentDids(asset.collection.assets, asset.did);
+            const { firstDid, prevDid, nextDid, lastDid } = findAdjacentDids();
 
             setFirstDid(firstDid);
             setPrevDid(prevDid);
             setNextDid(nextDid);
             setLastDid(lastDid);
+
+            setCurrentTitle(asset.title || "");
+            setNewTitle(asset.title || "");
         };
 
         init();

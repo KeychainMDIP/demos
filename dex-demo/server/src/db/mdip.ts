@@ -24,7 +24,7 @@ export class DbMdip implements DatabaseInterface {
             this.vaultDID = await this.keymaster.createGroupVault();
             await this.keymaster.addGroupVaultMember(this.vaultDID, this.ownerDID);
 
-            const db = { users: {} };
+            const db = { settings: {}, users: {} };
             await this.writeDb(db);
 
             data.db = this.vaultDID;

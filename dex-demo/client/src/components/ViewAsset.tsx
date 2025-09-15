@@ -11,6 +11,7 @@ import {
 } from "@mui/material";
 
 import ViewAssetMetadata from "./ViewAssetMetadata.js";
+import ViewAssetPfp from "./ViewAssetPfp.js";
 
 function ViewAsset() {
     const { did } = useParams();
@@ -75,6 +76,9 @@ function ViewAsset() {
                     </Tabs>
                     {tab === 'metadata' &&
                         <ViewAssetMetadata asset={asset} onSave={fetchAsset} />
+                    }
+                    {tab === 'pfp' &&
+                        <ViewAssetPfp asset={asset} onSave={fetchAsset} />
                     }
                 </div>
             </div>
