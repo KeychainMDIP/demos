@@ -446,6 +446,8 @@ app.get('/api/asset/:did', async (req: Request, res: Response) => {
         const asset = await keymaster.resolveAsset(req.params.did);
 
         if (asset.tokenized) {
+            asset.did = req.params.did;
+            
             const currentDb = await db.loadDb();
             const users = currentDb.users || {};
             const profile = users[asset.tokenized.owner] || { name: 'Unknown User' };

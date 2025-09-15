@@ -19,11 +19,62 @@ import {
 
 function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }) {
     const { did } = useParams();
+    const navigate = useNavigate();
     const auth = useAuth();
     const api = useApi();
     const { showSnackbar } = useSnackbar();
     const [newTitle, setNewTitle] = useState<string>(asset.title || "");
     const [currentTitle, setCurrentTitle] = useState<string>(asset.title || "");
+    const [firstDid, setFirstDid] = useState<string | null>(null);
+    const [prevDid, setPrevDid] = useState<string | null>(null);
+    const [nextDid, setNextDid] = useState<string | null>(null);
+    const [lastDid, setLastDid] = useState<string | null>(null);
+
+    function findAdjacentDids(list: string[], targetDid: string) {
+        let prevDid = null;
+        let nextDid = null;
+        let firstDid = null;
+        let lastDid = null;
+
+        for (let i = 0; i < list.length; i++) {
+            if (list[i] === targetDid) {
+                if (i > 0) {
+                    prevDid = list[i - 1];
+                }
+                if (i < list.length - 1) {
+                    nextDid = list[i + 1];
+                }
+                break;
+            }
+        }
+
+        firstDid = list[0];
+
+        if (firstDid === targetDid) {
+            firstDid = null;
+        }
+
+        lastDid = list[list.length - 1];
+
+        if (lastDid === targetDid) {
+            lastDid = null;
+        }
+
+        return { firstDid, prevDid, nextDid, lastDid };
+    }
+
+    useEffect(() => {
+        const init = async () => {
+            const { firstDid, prevDid, nextDid, lastDid } = findAdjacentDids(asset.collection.assets, asset.did);
+
+            setFirstDid(firstDid);
+            setPrevDid(prevDid);
+            setNextDid(nextDid);
+            setLastDid(lastDid);
+        };
+
+        init();
+    }, [asset]);
 
     async function saveTitle() {
         try {
@@ -75,7 +126,35 @@ function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }
                     <TableRow>
                         <TableCell>Collection</TableCell>
                         {asset.collection?.name ? (
-                            <TableCell><a href={`/collection/${asset.collection.did}`}>{asset.collection.name}</a></TableCell>
+                            <TableCell>
+                                <div style={{ display: 'inline-block' }}>
+                                    <Button
+                                        color="inherit"
+                                        disabled={!firstDid}
+                                        onClick={() => navigate(`/asset/${firstDid}`)}>
+                                        {'<<'}
+                                    </Button>
+                                    <Button
+                                        color="inherit"
+                                        disabled={!prevDid}
+                                        onClick={() => navigate(`/asset/${prevDid}`)}>
+                                        {'<'}
+                                    </Button>
+                                    <a href={`/collection/${asset.collection.did}`}>{asset.collection.name}</a>
+                                    <Button
+                                        color="inherit"
+                                        disabled={!nextDid}
+                                        onClick={() => navigate(`/asset/${nextDid}`)}>
+                                        {'>'}
+                                    </Button>
+                                    <Button
+                                        color="inherit"
+                                        disabled={!lastDid}
+                                        onClick={() => navigate(`/asset/${lastDid}`)}>
+                                        {'>>'}
+                                    </Button>
+                                </div>
+                            </TableCell>
                         ) : (
                             <TableCell>no collection</TableCell>
                         )}
