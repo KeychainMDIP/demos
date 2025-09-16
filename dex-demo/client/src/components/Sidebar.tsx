@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 import { Box, List, ListItemButton, ListItemIcon, ListItemText } from '@mui/material';
-import { AccountCircle, People, Settings } from '@mui/icons-material';
+import { AccountCircle, Home, Login, Logout, People, Settings } from '@mui/icons-material';
 import { useAuth } from "../contexts/AuthContext";
 
 function Sidebar() {
@@ -27,10 +27,6 @@ function Sidebar() {
 
     const isPathActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
 
-    if (auth.loading || !auth.isAuthenticated) {
-        return <></>;
-    }
-
     return (
         <Box
             sx={{
@@ -40,6 +36,10 @@ function Sidebar() {
             }}
         >
             <List component="nav" dense>
+                <ListItemButton component={RouterLink} to={`/`} sx={listItemSx} selected={isPathActive(`/`)}>
+                    <ListItemIcon sx={listIconSx}><Home /></ListItemIcon>
+                    <ListItemText primary={'DID Exchange'} />
+                </ListItemButton>
                 {auth.isAuthenticated && (
                     <ListItemButton component={RouterLink} to={`/profile/${auth.userDID}`} sx={listItemSx} selected={isPathActive(`/profile/${auth.userDID}`)}>
                         <ListItemIcon sx={listIconSx}><AccountCircle /></ListItemIcon>
@@ -56,6 +56,17 @@ function Sidebar() {
                     <ListItemButton component={RouterLink} to={`/users`} sx={listItemSx} selected={isPathActive(`/users`)}>
                         <ListItemIcon sx={listIconSx}><People /></ListItemIcon>
                         <ListItemText primary="Users" />
+                    </ListItemButton>
+                )}
+                {auth.isAuthenticated ? (
+                    <ListItemButton component={RouterLink} to={`/logout`} sx={listItemSx} selected={isPathActive(`/logout`)}>
+                        <ListItemIcon sx={listIconSx}><Logout /></ListItemIcon>
+                        <ListItemText primary="Logout" />
+                    </ListItemButton>
+                ) : (
+                    <ListItemButton component={RouterLink} to={`/login`} sx={listItemSx} selected={isPathActive(`/login`)}>
+                        <ListItemIcon sx={listIconSx}><Login /></ListItemIcon>
+                        <ListItemText primary="Login" />
                     </ListItemButton>
                 )}
             </List>

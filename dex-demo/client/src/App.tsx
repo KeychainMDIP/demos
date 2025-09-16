@@ -11,7 +11,6 @@ import {
 import { ApiProvider } from './contexts/ApiContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { SnackbarProvider } from './contexts/SnackbarContext.js';
-import Header from './components/Header.js';
 import Sidebar from './components/Sidebar.js';
 import Home from './components/Home.js';
 import ViewLogin from './components/ViewLogin.js';
@@ -28,7 +27,6 @@ import './App.css';
 function AppLayout() {
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', width: '95%' }}>
-            <Header />
             <Box sx={{ display: 'flex', flexGrow: 1, width: '100%' }}>
                 <Sidebar />
                 <Box
