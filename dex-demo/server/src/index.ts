@@ -613,6 +613,11 @@ app.post('/api/collection', isAuthenticated, async (req: Request, res: Response)
         const currentDb = await db.loadDb();
         const users = currentDb.users || {};
 
+        if (!users[did]) {
+            res.status(404).json({ message: 'User not found' });
+            return;
+        }
+
         const collectionId = await createCollection(name, did);
         users[did].assets.collections.push(collectionId);
 

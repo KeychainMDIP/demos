@@ -82,7 +82,7 @@ function ViewCollection() {
             const confirmed = window.confirm(`Are you sure you want to remove the collection "${collection.name}"?`);
             if (confirmed) {
                 await api.delete(`/collection/${did}`);
-                navigate('/');
+                navigate(`/profile/${auth.userDID}`);
             }
         } catch (error) {
             showSnackbar('Failed to remove collection', 'error');
