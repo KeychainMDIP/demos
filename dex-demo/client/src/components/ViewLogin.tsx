@@ -53,7 +53,7 @@ function ViewLogin() {
             if (intervalIdRef.current) {
                 clearInterval(intervalIdRef.current);
             }
-            navigate('/');
+            navigate(`/profile/${auth.userDID}`);
         }
     }, [auth.isAuthenticated, navigate]);
 
@@ -61,13 +61,7 @@ function ViewLogin() {
         setLoggingIn(true);
 
         try {
-            const getAuth = await api.post(`/login`, { challenge: challengeDID, response: responseDID });
-
-            if (getAuth.data.authenticated) {
-                navigate('/');
-            } else {
-                showSnackbar('Login failed', 'error');
-            }
+            await api.post(`/login`, { challenge: challengeDID, response: responseDID });
         }
         catch (error: any) {
             showSnackbar('Login request failed', 'error');

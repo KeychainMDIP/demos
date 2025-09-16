@@ -132,7 +132,7 @@ async function loginUser(response: string): Promise<any> {
         }
 
         if (user.assets.collections.length === 0) {
-            const collectionId = await createCollection(did);
+            const collectionId = await createCollection('Collection', did);
             user.assets.collections.push(collectionId);
         }
 
@@ -149,10 +149,9 @@ async function loginUser(response: string): Promise<any> {
     return verify;
 }
 
-async function createCollection(did: string): Promise<string> {
-    const name = "Collection";
+async function createCollection(name: string, owner: string): Promise<string> {
     const collection = {
-        owner: did,
+        owner,
         assets: [],
     };
 
@@ -307,6 +306,32 @@ app.get('/api/check-auth', async (req: Request, res: Response) => {
     }
 });
 
+app.patch('/api/settings', isAdmin, async (req: Request, res: Response) => {
+    try {
+        const { pfp, thumbnail } = req.body;
+        const currentDb = await db.loadDb();
+
+        if (!currentDb.settings) {
+            currentDb.settings = {};
+        }
+
+        if (pfp) {
+            currentDb.settings.pfp = pfp;
+        }
+
+        if (thumbnail) {
+            currentDb.settings.thumbnail = thumbnail;
+        }
+
+        db.writeDb(currentDb);
+        res.json({ ok: true });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).send(String(error));
+    }
+});
+
 app.get('/api/profile/:did', async (req: Request, res: Response) => {
     try {
         const did = req.params.did;
@@ -325,9 +350,23 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
             try {
                 const asset = await keymaster.resolveAsset(collectionId);
                 if (asset && asset.collection) {
+                    const thumbnail = {
+                        did: asset.collection.thumbnail || currentDb.settings?.thumbnail,
+                        cid: undefined,
+                    };
+
+                    if (thumbnail.did) {
+                        const thumbAsset = await keymaster.resolveAsset(thumbnail.did);
+                        if (thumbAsset && thumbAsset.image) {
+                            thumbnail.cid = thumbAsset.image.cid;
+                        }
+                    }
+
                     collections.push({
                         did: collectionId,
                         ...asset.collection,
+                        name: asset.name,
+                        thumbnail,
                     });
                 }
             } catch (e) {
@@ -335,14 +374,69 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
             }
         }
 
+        const pfp = {
+            did: rawProfile.pfp || currentDb.settings?.pfp,
+            cid: undefined,
+        };
+
+        if (pfp.did) {
+            try {
+                const pfpAsset = await keymaster.resolveAsset(pfp.did);
+                if (pfpAsset && pfpAsset.image) {
+                    pfp.cid = pfpAsset.image.cid;
+                }
+            } catch (e) {
+                console.log(`Failed to resolve profile picture ${pfp.did}: ${e}`);
+            }
+        }
+
         const profile: User = {
             ...rawProfile,
             did,
+            pfp,
             isUser,
             collections,
         };
 
         res.json(profile);
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).send(String(error));
+    }
+});
+
+app.patch('/api/profile/:did', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+        const did = req.params.did;
+        const { name, tagline, pfp } = req.body;
+
+        if (!req.session.user || req.session.user.did !== did) {
+            res.status(403).json({ message: 'Forbidden' });
+            return;
+        }
+
+        const currentDb = await db.loadDb();
+        if (!currentDb.users || !currentDb.users[did]) {
+            res.status(404).send('Not found');
+            return;
+        }
+
+        if (name !== undefined) {
+            currentDb.users[did].name = name;
+        }
+
+        if (tagline !== undefined) {
+            currentDb.users[did].tagline = tagline;
+        }
+
+        if (pfp !== undefined) {
+            currentDb.users[did].pfp = pfp;
+        }
+
+        db.writeDb(currentDb);
+
+        res.json({ ok: true, message: `Profile updated` });
     }
     catch (error) {
         console.log(error);
@@ -446,6 +540,8 @@ app.get('/api/asset/:did', async (req: Request, res: Response) => {
         const asset = await keymaster.resolveAsset(req.params.did);
 
         if (asset.tokenized) {
+            asset.did = req.params.did;
+
             const currentDb = await db.loadDb();
             const users = currentDb.users || {};
             const profile = users[asset.tokenized.owner] || { name: 'Unknown User' };
@@ -496,6 +592,66 @@ app.patch('/api/asset/:did', isAuthenticated, async (req: Request, res: Response
         res.json({ ok: true, message: 'Asset updated successfully' });
     } catch (error: any) {
         res.status(500).send("Failed to update asset");
+    }
+});
+
+app.post('/api/collection', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+        if (!req.session.user?.did) {
+            res.status(403).json({ message: 'Forbidden' });
+            return;
+        }
+
+        const { name } = req.body;
+
+        if (!name || typeof name !== 'string' || name.trim().length === 0) {
+            res.status(400).json({ message: 'Collection name is required' });
+            return;
+        }
+
+        const did = req.session.user.did;
+        const currentDb = await db.loadDb();
+        const users = currentDb.users || {};
+
+        if (!users[did]) {
+            res.status(404).json({ message: 'User not found' });
+            return;
+        }
+
+        const collectionId = await createCollection(name, did);
+        users[did].assets.collections.push(collectionId);
+
+        db.writeDb(currentDb);
+        res.json({ did: collectionId });
+    } catch (error: any) {
+        res.status(500).send(String(error));
+    }
+});
+
+app.delete('/api/collection/:did', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+        if (!req.session.user?.did) {
+            res.status(403).json({ message: 'Forbidden' });
+            return;
+        }
+
+        const { did } = req.params;
+        const userDID = req.session.user.did;
+        const currentDb = await db.loadDb();
+        const users = currentDb.users || {};
+        const user = users[userDID];
+
+        if (!user) {
+            res.status(404).send('Not found');
+            return;
+        }
+
+        user.assets.collections = user.assets.collections.filter((c: string) => c !== did);
+
+        db.writeDb(currentDb);
+        res.json({ ok: true });
+    } catch (error: any) {
+        res.status(500).send(String(error));
     }
 });
 
@@ -553,7 +709,7 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
 app.patch('/api/collection/:did', isAuthenticated, async (req: Request, res: Response) => {
     try {
         const did = req.params.did;
-        const updates = req.body;
+        const { name, thumbnail } = req.body;
 
         const data = await keymaster.resolveAsset(did);
 
@@ -562,19 +718,25 @@ app.patch('/api/collection/:did', isAuthenticated, async (req: Request, res: Res
             return;
         }
 
-        const collection = data.collection;
-
-        if (!collection) {
+        if (!data.collection) {
             res.status(400).send("Not a collection");
             return;
         }
 
-        if (!req.session.user || req.session.user.did !== collection.owner) {
+        if (!req.session.user || req.session.user.did !== data.collection.owner) {
             res.status(403).json({ message: 'Forbidden' });
             return;
         }
 
-        await keymaster.updateAsset(did, updates);
+        if (name !== undefined) {
+            data.name = name;
+        }
+
+        if (thumbnail !== undefined) {
+            data.collection.thumbnail = thumbnail;
+        }
+
+        await keymaster.updateAsset(did, data);
         res.json({ ok: true, message: 'Collection updated successfully' });
     } catch (error: any) {
         res.status(500).send("Failed to update collection");
