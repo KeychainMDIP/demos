@@ -63,8 +63,25 @@ function ViewProfile() {
 
     return (
         <Box sx={{ width: '100%', maxWidth: 1600, p: 3 }}>
-            <Typography variant="h4">{profile.name}</Typography>
-            <Typography variant="h5" gutterBottom>{profile.tagline}</Typography>
+            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
+                {profile.pfp?.cid && (
+                    <img
+                        src={`/api/ipfs/${profile.pfp.cid}`}
+                        alt="Profile pic"
+                        style={{
+                            width: '100px',
+                            height: '100px',
+                            objectFit: 'cover',
+                            marginRight: '16px',
+                            borderRadius: '50%',
+                        }}
+                    />
+                )}
+                <div>
+                    <Typography variant="h4">{profile.name}</Typography>
+                    <Typography variant="caption">{profile.tagline}</Typography>
+                </div>
+            </div>
             <Tabs
                 value={tab}
                 onChange={(_, newTab) => { setTab(newTab); }}
