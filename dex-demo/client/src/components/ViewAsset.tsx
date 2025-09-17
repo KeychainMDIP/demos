@@ -12,6 +12,7 @@ import {
 
 import ViewAssetMetadata from "./ViewAssetMetadata.js";
 import ViewAssetPfp from "./ViewAssetPfp.js";
+import ViewAssetMint from "./ViewAssetMint.js";
 
 function ViewAsset() {
     const { did } = useParams();
@@ -67,15 +68,27 @@ function ViewAsset() {
                         scrollButtons="auto"
                     >
                         <Tab key="metadata" value="metadata" label={'Metadata'} />
-                        <Tab key="token" value="token" label={'Token'} />
-                        <Tab key="buysell" value="buysell" label={'Buy/Sell'} />
+                        {auth.isAuthenticated && !asset.minted && asset.tokenized.owner === auth.userDID &&
+                            <Tab key="mint" value="mint" label={'Mint'} />
+                        }
+                        {asset.minted &&
+                            <Tab key="token" value="token" label={'Token'} />
+                        }
+                        {asset.minted &&
+                            <Tab key="buysell" value="buysell" label={'Buy/Sell'} />
+                        }
                         {auth.isAuthenticated &&
                             <Tab key="pfp" value="pfp" label={'Pfp'} />
                         }
-                        <Tab key="history" value="history" label={'History'} />
+                        {asset.minted &&
+                            <Tab key="history" value="history" label={'History'} />
+                        }
                     </Tabs>
                     {tab === 'metadata' &&
                         <ViewAssetMetadata asset={asset} onSave={fetchAsset} />
+                    }
+                    {tab === 'mint' &&
+                        <ViewAssetMint asset={asset} onSave={fetchAsset} />
                     }
                     {tab === 'pfp' &&
                         <ViewAssetPfp asset={asset} onSave={fetchAsset} />
