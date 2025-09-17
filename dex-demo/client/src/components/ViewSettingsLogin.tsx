@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useSnackbar } from "../contexts/SnackbarContext.js";
 import { useApi } from "../contexts/ApiContext.js";
 import { differenceInDays, format } from "date-fns";
-import {  Box, Table, TableBody, TableCell, TableRow } from "@mui/material";
+import { Box, Table, TableBody, TableCell, TableRow } from "@mui/material";
 
 function ViewSettingsLogin() {
     const { did } = useParams();
@@ -51,7 +51,7 @@ function ViewSettingsLogin() {
     const labelSx = { fontWeight: 'bold', width: 100 }
 
     return (
-        <Box sx={{ width: '100%', maxWidth: 1600, p: 3 }}>
+        <Box sx={{ width: '100%', p: 3 }}>
             <Table sx={{ width: '100%' }}>
                 <TableBody>
                     <TableRow>

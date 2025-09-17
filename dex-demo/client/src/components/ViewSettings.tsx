@@ -43,7 +43,7 @@ function ViewSettings() {
     }
 
     return (
-        <Box sx={{ width: '100%', maxWidth: 1600, p: 3 }}>
+        <Box sx={{ width: '100%', p: 3 }}>
             <Typography variant="h4" gutterBottom>{profile.name} Account Settings</Typography>
             <Tabs
                 value={tab}

@@ -107,7 +107,7 @@ function ViewSettingsName() {
     const labelSx = { fontWeight: 'bold', width: 60 }
 
     return (
-        <Box sx={{ width: '100%', maxWidth: 1600, p: 3 }}>
+        <Box sx={{ width: '100%', p: 3 }}>
             <Table sx={{ width: '100%' }}>
                 <TableBody>
                     <TableRow>

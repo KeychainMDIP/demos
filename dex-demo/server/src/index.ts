@@ -539,12 +539,8 @@ app.get('/api/asset/:did', async (req: Request, res: Response) => {
     try {
         const asset = await keymaster.resolveAsset(req.params.did);
 
-        if (asset.tokenized) {
-            asset.matrix = asset.tokenized;
-            delete asset.tokenized;
-        }
-
         if (asset.matrix) {
+            asset.matrix.original = asset.cloned;
             asset.did = req.params.did;
 
             const currentDb = await db.loadDb();
@@ -587,11 +583,6 @@ app.patch('/api/asset/:did', isAuthenticated, async (req: Request, res: Response
         if (!asset) {
             res.status(404).send("Asset not found");
             return;
-        }
-
-        if (asset.tokenized) {
-            asset.matrix = asset.tokenized;
-            delete asset.tokenized;
         }
 
         const owner = asset.matrix?.owner;
