@@ -48,8 +48,8 @@ function ViewAssetMint({ asset, onSave }: { asset: any, onSave: () => void }) {
                     </TableRow>
                     <TableRow>
                         <TableCell>Creator</TableCell>
-                        {asset.owner?.name ? (
-                            <TableCell><a href={`/profile/${asset.tokenized.owner}`}>{asset.owner.name}</a></TableCell>
+                        {asset.owner?.did && asset.owner?.name ? (
+                            <TableCell><a href={`/profile/${asset.owner.did}`}>{asset.owner.name}</a></TableCell>
                         ) : (
                             <TableCell>no creator</TableCell>
                         )}

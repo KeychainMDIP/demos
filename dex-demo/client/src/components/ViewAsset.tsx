@@ -68,7 +68,7 @@ function ViewAsset() {
                         scrollButtons="auto"
                     >
                         <Tab key="metadata" value="metadata" label={'Metadata'} />
-                        {auth.isAuthenticated && !asset.minted && asset.tokenized.owner === auth.userDID &&
+                        {auth.isAuthenticated && !asset.minted && asset.matrix?.owner === auth.userDID &&
                             <Tab key="mint" value="mint" label={'Mint'} />
                         }
                         {asset.minted &&

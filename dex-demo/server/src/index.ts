@@ -540,27 +540,35 @@ app.get('/api/asset/:did', async (req: Request, res: Response) => {
         const asset = await keymaster.resolveAsset(req.params.did);
 
         if (asset.tokenized) {
+            asset.matrix = asset.tokenized;
+            delete asset.tokenized;
+        }
+
+        if (asset.matrix) {
             asset.did = req.params.did;
 
             const currentDb = await db.loadDb();
             const users = currentDb.users || {};
-            const profile = users[asset.tokenized.owner] || { name: 'Unknown User' };
-            asset.owner = profile;
 
-            if (asset.tokenized.collection) {
+            asset.owner = users[asset.matrix.owner] || {};
+            asset.owner.did = asset.matrix.owner;
+
+            if (asset.matrix.collection) {
                 try {
-                    const collection = await keymaster.resolveAsset(asset.tokenized.collection);
+                    const collection = await keymaster.resolveAsset(asset.matrix.collection);
                     if (collection && collection.collection) {
                         asset.collection = {
                             ...collection.collection,
-                            did: asset.tokenized.collection,
+                            did: asset.matrix.collection,
                             name: collection.name,
                         };
                     }
                 } catch (e) {
-                    console.log(`Failed to resolve collection ${asset.tokenized.collection}: ${e}`);
+                    console.log(`Failed to resolve collection ${asset.matrix.collection}: ${e}`);
                 }
             }
+        } else {
+            asset.owner = {};
         }
 
         res.json({ asset });
@@ -581,7 +589,12 @@ app.patch('/api/asset/:did', isAuthenticated, async (req: Request, res: Response
             return;
         }
 
-        const owner = asset.tokenized?.owner;
+        if (asset.tokenized) {
+            asset.matrix = asset.tokenized;
+            delete asset.tokenized;
+        }
+
+        const owner = asset.matrix?.owner;
 
         if (!req.session.user || req.session.user.did !== owner) {
             res.status(403).json({ message: 'Forbidden' });
@@ -773,11 +786,11 @@ app.post('/api/collection/:did/add', isAuthenticated, async (req: Request, res: 
             return;
         }
 
-        const tokenized = {
+        const matrix = {
             owner: req.session.user?.did,
             collection: did,
         };
-        await keymaster.updateAsset(clone, { tokenized });
+        await keymaster.updateAsset(clone, { matrix });
 
         collection.assets.push(clone);
         await keymaster.updateAsset(did, { collection });
@@ -848,6 +861,39 @@ async function verifyWallet(): Promise<void> {
 
     await keymaster.setCurrentId(DEMO_NAME);
     console.log(`${DEMO_NAME} wallet DID ${demoDID}`);
+
+    const assets = await keymaster.listAssets();
+    console.log(`Wallet has ${assets.length} assets`);
+
+    let matrixCount = 0;
+    let collectionCount = 0;
+
+    for (const did of assets) {
+        const asset = await keymaster.resolveAsset(did);
+
+        if (!asset) {
+            console.log(`Failed to resolve asset ${did}`);
+            continue;
+        }
+
+        if (asset.tokenized) {
+            asset.matrix = asset.tokenized;
+            asset.tokenized = null;
+            await keymaster.updateAsset(did, asset);
+            console.log(`Updated tokenized to matrix for ${did}`);
+        }
+
+        if (asset.matrix) {
+            console.log(`Asset ${did} is a matrix asset ${asset.title}`);
+            matrixCount += 1;
+        }
+
+        if (asset.collection) {
+            console.log(`Asset ${did} is a collection ${asset.name}`);
+            collectionCount += 1;
+        }
+    }
+    console.log(`Wallet has ${matrixCount} matrix assets and ${collectionCount} collections`);
 }
 
 app.listen(HOST_PORT, '0.0.0.0', async () => {
