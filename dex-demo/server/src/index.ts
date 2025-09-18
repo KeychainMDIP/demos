@@ -179,6 +179,20 @@ app.get('/api/version', async (_: Request, res: Response) => {
     }
 });
 
+const ValidLicenses = {
+    "CC BY": "https://creativecommons.org/licenses/by/4.0/",
+    "CC BY-SA": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "CC BY-NC": "https://creativecommons.org/licenses/by-nc/4.0/",
+    "CC BY-ND": "https://creativecommons.org/licenses/by-nd/4.0/",
+    "CC BY-NC-SA": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "CC BY-NC-ND": "https://creativecommons.org/licenses/by-nc-nd/4.0/",
+    "CC0": "https://creativecommons.org/publicdomain/zero/1.0/",
+};
+
+app.get('/api/licenses', async (_: Request, res: Response) => {
+    res.json(ValidLicenses);
+});
+
 app.get('/api/challenge', async (req: Request, res: Response) => {
     try {
         const challenge = await keymaster.createChallenge({
