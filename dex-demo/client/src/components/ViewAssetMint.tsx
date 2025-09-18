@@ -4,7 +4,6 @@ import { useSnackbar } from "../contexts/SnackbarContext.js";
 import { useAuth } from "../contexts/AuthContext.js";
 import { useApi } from "../contexts/ApiContext.js";
 import {
-    Box,
     Button,
     Table,
     TableBody,
@@ -15,6 +14,7 @@ import {
     Select,
     MenuItem,
 } from "@mui/material";
+import { on } from "events";
 
 function ViewAssetMint({ asset, onSave }: { asset: any, onSave: () => void }) {
     const { did } = useParams();
@@ -47,12 +47,22 @@ function ViewAssetMint({ asset, onSave }: { asset: any, onSave: () => void }) {
                 showSnackbar("Failed to fetch licenses", 'error');
             }
 
-            setCredits(asset.owner?.credits || 0);
+            const credits = asset.owner?.credits || 0;
+            const fileSize = asset.image?.bytes || 0;
+            const storageFee = Math.ceil(fileSize / 1000) * 1; // 1 credit per 1000 bytes
+            const editionRate = 100;
+            const editionFee = editions * editionRate;
+            const totalFee = storageFee + editionFee;
 
-            setFileSize(asset.image.bytes || 0);
-            setStorageFee(Math.ceil((asset.image.bytes || 0) / 1000) * 1); // 1 credit per 1000 bytes
-            setEditionRate(100); // 100 credits per edition
-            handleEditionsChange('1');
+            setCredits(credits);
+            setFileSize(fileSize);
+            setStorageFee(storageFee);
+            setEditionRate(editionRate);
+            setEditions(editions);
+            setEditionFee(editionFee);
+            setTotalFee(totalFee);
+            setDisableMint(totalFee > credits);
+            setShowAddCredits(totalFee > credits);
         };
 
         init();
@@ -72,18 +82,32 @@ function ViewAssetMint({ asset, onSave }: { asset: any, onSave: () => void }) {
             editions = 100;
         }
 
-        setEditions(editions);
         const editionFee = editions * editionRate;
-        setEditionFee(editionFee);
         const totalFee = storageFee + editionFee;
-        setTotalFee(totalFee);
 
+        setEditions(editions);
+        setEditionFee(editionFee);
+        setTotalFee(totalFee);
         setDisableMint(totalFee > credits);
+        setShowAddCredits(totalFee > credits);
     }
 
     function handleRoyaltyChange(value: string) {
         const royalty = parseInt(value, 10);
         setRoyalty(royalty);
+    }
+
+    function handleAddCredits() {
+        const newCredits = credits + 1000;
+
+        setCredits(newCredits);
+        setDisableMint(totalFee > newCredits);
+        setShowAddCredits(totalFee > newCredits);
+    }
+
+    function handleMintClick() {
+        setDisableMint(true);
+        onSave();
     }
 
     return (
@@ -175,6 +199,22 @@ function ViewAssetMint({ asset, onSave }: { asset: any, onSave: () => void }) {
                     <TableRow>
                         <TableCell>Current balance</TableCell>
                         <TableCell>{credits} credits</TableCell>
+                    </TableRow>
+                    <TableRow>
+                        <TableCell></TableCell>
+                        <TableCell>
+                            <Button variant="contained" color="primary"
+                                onClick={handleMintClick}
+                                disabled={disableMint}
+                                style={{ marginRight: '10px' }} >
+                                Mint
+                            </Button>
+                            {showAddCredits &&
+                                <Button variant="contained" color="primary" onClick={handleAddCredits}>
+                                    Add Credits
+                                </Button>
+                            }
+                        </TableCell>
                     </TableRow>
                 </TableBody>
             </Table>
