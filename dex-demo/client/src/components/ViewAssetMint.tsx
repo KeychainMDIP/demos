@@ -14,7 +14,6 @@ import {
     Select,
     MenuItem,
 } from "@mui/material";
-import { on } from "events";
 
 function ViewAssetMint({ asset, onSave }: { asset: any, onSave: () => void }) {
     const { did } = useParams();
@@ -40,8 +39,9 @@ function ViewAssetMint({ asset, onSave }: { asset: any, onSave: () => void }) {
         const init = async () => {
             try {
                 const getLicenses = await api.get(`/licenses`);
-                const licenseList = getLicenses.data;
-                setLicenses(Object.keys(licenseList));
+                const licenses = getLicenses.data;
+                const licenseList = Object.keys(licenses).sort();
+                setLicenses(licenseList);
                 setLicense(licenseList[0]);
             } catch (error) {
                 showSnackbar("Failed to fetch licenses", 'error');
