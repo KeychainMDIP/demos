@@ -39,30 +39,33 @@ function ViewAssetMint({ asset, onSave }: { asset: any, onSave: () => void }) {
         const init = async () => {
             try {
                 const getLicenses = await api.get(`/licenses`);
+                const getRates = await api.get(`/rates`);
+                
                 const licenses = getLicenses.data;
                 const licenseList = Object.keys(licenses).sort();
+                const rates = getRates.data;
+                const editionRate = rates.editionRate || 100;
+                const storageRate = rates.storageRate || 0.001;
+                const credits = asset.owner?.credits || 0;
+                const fileSize = asset.image?.bytes || 0;
+                const storageFee = Math.ceil(fileSize * storageRate);
+                const editionFee = editions * editionRate;
+                const totalFee = storageFee + editionFee;
+
                 setLicenses(licenseList);
                 setLicense(licenseList[0]);
+                setCredits(credits);
+                setFileSize(fileSize);
+                setStorageFee(storageFee);
+                setEditionRate(editionRate);
+                setEditions(editions);
+                setEditionFee(editionFee);
+                setTotalFee(totalFee);
+                setDisableMint(totalFee > credits);
+                setShowAddCredits(totalFee > credits);
             } catch (error) {
                 showSnackbar("Failed to fetch licenses", 'error');
             }
-
-            const credits = asset.owner?.credits || 0;
-            const fileSize = asset.image?.bytes || 0;
-            const storageFee = Math.ceil(fileSize / 1000) * 1; // 1 credit per 1000 bytes
-            const editionRate = 100;
-            const editionFee = editions * editionRate;
-            const totalFee = storageFee + editionFee;
-
-            setCredits(credits);
-            setFileSize(fileSize);
-            setStorageFee(storageFee);
-            setEditionRate(editionRate);
-            setEditions(editions);
-            setEditionFee(editionFee);
-            setTotalFee(totalFee);
-            setDisableMint(totalFee > credits);
-            setShowAddCredits(totalFee > credits);
         };
 
         init();
