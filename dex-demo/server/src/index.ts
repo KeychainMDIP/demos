@@ -826,6 +826,42 @@ app.get('/api/ipfs/:cid', async (req, res) => {
     }
 });
 
+app.post('/api/add-credits', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+        if (!req.session.user?.did) {
+            res.status(403).json({ message: 'Forbidden' });
+            return;
+        }
+
+        const { amount } = req.body;
+
+        if (!amount || typeof amount !== 'number' || amount <= 0) {
+            res.status(400).json({ message: 'Valid amount is required' });
+            return;
+        }
+
+        const did = req.session.user.did;
+        const currentDb = await db.loadDb();
+        const users = currentDb.users || {};
+
+        if (!users[did]) {
+            res.status(404).json({ message: 'User not found' });
+            return;
+        }
+
+        users[did].credits = (users[did].credits || 0) + amount;
+        db.writeDb(currentDb);
+
+        res.json({
+            ok: true,
+            message: 'Credits added successfully',
+            balance: users[did].credits,
+        });
+    } catch (error: any) {
+        res.status(500).send("Failed to add credits");
+    }
+});
+
 if (process.env.DEX_SERVE_CLIENT !== 'false') {
     const __dirname = path.dirname(fileURLToPath(import.meta.url));
     const clientBuildPath = path.join(__dirname, '../../client/build');

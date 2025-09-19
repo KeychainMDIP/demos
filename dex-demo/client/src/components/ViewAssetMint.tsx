@@ -97,12 +97,16 @@ function ViewAssetMint({ asset, onSave }: { asset: any, onSave: () => void }) {
         setRoyalty(royalty);
     }
 
-    function handleAddCredits() {
-        const newCredits = credits + 1000;
-
-        setCredits(newCredits);
-        setDisableMint(totalFee > newCredits);
-        setShowAddCredits(totalFee > newCredits);
+    async function handleAddCredits() {
+        try {
+            const getCredits = await api.post(`/add-credits`, { amount: 1000 });
+            const { balance } = getCredits.data;
+            setCredits(balance);
+            setDisableMint(totalFee > balance);
+            setShowAddCredits(totalFee > balance);
+        } catch (error) {
+            showSnackbar("Failed to add credits", 'error');
+        }
     }
 
     function handleMintClick() {
