@@ -592,6 +592,56 @@ app.get('/api/asset/:did', async (req: Request, res: Response) => {
             asset.owner = {};
         }
 
+        if (asset.minted) {
+            const currentDb = await db.loadDb();
+            const users = currentDb.users || {};
+
+            // Replace each did in asset.minted.tokens with { did, ownerName, ownerDID, ownerPfp }
+            asset.minted.tokens = await Promise.all(asset.minted.tokens.map(async (tokenDID: string) => {
+                const docs = await keymaster.resolveDID(tokenDID);
+                let tokenOwner = docs?.didDocument?.controller || '';
+
+                if (tokenOwner === DEMO_DID) {
+                    tokenOwner = asset.matrix.owner;
+                }
+
+                if (users[tokenOwner]) {
+                    const pfp = {
+                        did: users[tokenOwner].pfp || currentDb.settings?.pfp,
+                        cid: undefined,
+                    };
+
+                    if (pfp.did) {
+                        try {
+                            const pfpAsset = await keymaster.resolveAsset(pfp.did);
+                            if (pfpAsset && pfpAsset.image) {
+                                pfp.cid = pfpAsset.image.cid;
+                            }
+                        } catch (e) {
+                            console.log(`Failed to resolve profile picture ${pfp.did}: ${e}`);
+                        }
+                    }
+
+                    return {
+                        did: tokenDID,
+                        owner: {
+                            did: tokenOwner,
+                            name: users[tokenOwner].name,
+                            pfp,
+                        }
+                    };
+                } else {
+                    return {
+                        did: tokenDID,
+                        owner: {
+                            did: tokenOwner,
+                            name: 'Unknown',
+                        }
+                    };
+                }
+            }));
+        }
+
         res.json({ asset });
     } catch (error: any) {
         res.status(404).send("DID not found");
@@ -751,6 +801,8 @@ app.post('/api/asset/:did/unmint', isAuthenticated, async (req: Request, res: Re
         }
 
         await keymaster.updateAsset(did, { minted: null });
+
+        // TBD return credits?
 
         res.json({ ok: true, message: 'Asset unminted successfully' });
     } catch (error: any) {
