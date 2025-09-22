@@ -26,6 +26,7 @@ function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }
     const [prevDid, setPrevDid] = useState<string | null>(null);
     const [nextDid, setNextDid] = useState<string | null>(null);
     const [lastDid, setLastDid] = useState<string | null>(null);
+    const [isEditable, setIsEditable] = useState<boolean>(false);
 
     function findAdjacentDids() {
         const list = asset.collection?.assets || [];
@@ -73,6 +74,8 @@ function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }
 
             setCurrentTitle(asset.title || "");
             setNewTitle(asset.title || "");
+
+            setIsEditable(auth.isAuthenticated && auth.userDID === asset.matrix?.owner && !asset.minted)
         };
 
         init();
@@ -97,7 +100,7 @@ function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }
                 <TableBody>
                     <TableRow>
                         <TableCell>Title</TableCell>
-                        {auth.isAuthenticated && auth.userDID === asset.matrix?.owner ? (
+                        {isEditable ? (
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                                 <TextField
                                     label=""
