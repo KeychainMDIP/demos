@@ -179,27 +179,28 @@ app.get('/api/version', async (_: Request, res: Response) => {
     }
 });
 
+const ValidLicenses = {
+    "CC BY": "https://creativecommons.org/licenses/by/4.0/",
+    "CC BY-SA": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "CC BY-NC": "https://creativecommons.org/licenses/by-nc/4.0/",
+    "CC BY-ND": "https://creativecommons.org/licenses/by-nd/4.0/",
+    "CC BY-NC-SA": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "CC BY-NC-ND": "https://creativecommons.org/licenses/by-nc-nd/4.0/",
+    "CC0": "https://creativecommons.org/publicdomain/zero/1.0/",
+};
+
 app.get('/api/licenses', async (_: Request, res: Response) => {
-    const ValidLicenses = {
-        "CC BY": "https://creativecommons.org/licenses/by/4.0/",
-        "CC BY-SA": "https://creativecommons.org/licenses/by-sa/4.0/",
-        "CC BY-NC": "https://creativecommons.org/licenses/by-nc/4.0/",
-        "CC BY-ND": "https://creativecommons.org/licenses/by-nd/4.0/",
-        "CC BY-NC-SA": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
-        "CC BY-NC-ND": "https://creativecommons.org/licenses/by-nc-nd/4.0/",
-        "CC0": "https://creativecommons.org/publicdomain/zero/1.0/",
-    };
 
     res.json(ValidLicenses);
 });
 
-app.get('/api/rates', async (_: Request, res: Response) => {
-    const rates = {
-        editionRate: 100,
-        storageRate: 0.001, // per byte in credits
-    };
+const MintingRates = {
+    editionRate: 100,
+    storageRate: 0.001, // per byte in credits
+};
 
-    res.json(rates);
+app.get('/api/rates', async (_: Request, res: Response) => {
+    res.json(MintingRates);
 });
 
 app.get('/api/challenge', async (req: Request, res: Response) => {
@@ -622,6 +623,95 @@ app.patch('/api/asset/:did', isAuthenticated, async (req: Request, res: Response
     }
 });
 
+app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+        const did = req.params.did;
+        const { editions, royalty, license } = req.body;
+
+        if (typeof editions !== 'number' || editions < 0 || editions > 100) {
+            res.status(400).send("Editions must be a number between 0 and 100");
+            return;
+        }
+
+        if (typeof royalty !== 'number' || royalty < 0 || royalty > 25) {
+            res.status(400).send("Royalty must be a number between 0 and 25");
+            return;
+        }
+
+        if (typeof license !== 'string' || !(license in ValidLicenses)) {
+            res.status(400).send("Invalid license");
+            return;
+        }
+
+        const asset = await keymaster.resolveAsset(did);
+
+        if (!asset) {
+            res.status(404).send("Asset not found");
+            return;
+        }
+
+        const owner = asset.matrix?.owner;
+
+        if (!req.session.user || req.session.user.did !== owner) {
+            res.status(403).json({ message: 'Forbidden' });
+            return;
+        }
+
+        if (asset.minted) {
+            res.status(400).send("Asset has already been minted");
+            return;
+        }
+
+        const currentDb = await db.loadDb();
+        const users = currentDb.users || {};
+        const user = users[owner];
+
+        if (!user) {
+            res.status(404).send("User not found");
+            return;
+        }
+
+        const storageFee = (asset.image?.size || 0) * MintingRates.storageRate;
+        const mintingFee = editions * MintingRates.editionRate;
+        const totalFee = storageFee + mintingFee;
+
+        if ((user.credits || 0) < totalFee) {
+            res.status(403).send("Insufficient credits");
+            return;
+        }
+
+        const tokens = [];
+
+        for (let i = 1; i <= editions; i++) {
+            const title = `${asset.title || 'Untitled'} (#${i} of ${editions})`;
+            const image = asset.image;
+            const token = {
+                edition: i,
+                matrix: did,
+            };
+
+            const editionDID = await keymaster.createAsset({ title, image, token });
+            tokens.push(editionDID);
+        }
+
+        const minted = {
+            editions,
+            royalty,
+            license,
+            tokens,
+        };
+
+        await keymaster.updateAsset(did, { minted });
+
+        user.credits = (user.credits || 0) - totalFee;
+        db.writeDb(currentDb);
+
+        res.json({ ok: true, message: 'Asset minted successfully' });
+    } catch (error: any) {
+        res.status(500).send("Failed to update asset");
+    }
+});
+
 app.post('/api/collection', isAuthenticated, async (req: Request, res: Response) => {
     try {
         if (!req.session.user?.did) {
@@ -916,6 +1006,7 @@ async function verifyWallet(): Promise<void> {
     console.log(`Wallet has ${assets.length} assets`);
 
     let matrixCount = 0;
+    let tokenCount = 0;
     let collectionCount = 0;
 
     for (const did of assets) {
@@ -938,12 +1029,17 @@ async function verifyWallet(): Promise<void> {
             matrixCount += 1;
         }
 
+        if (asset.token) {
+            console.log(`Asset ${did} is a token asset ${asset.title}`);
+            tokenCount += 1;
+        }
+
         if (asset.collection) {
             console.log(`Asset ${did} is a collection ${asset.name}`);
             collectionCount += 1;
         }
     }
-    console.log(`Wallet has ${matrixCount} matrix assets and ${collectionCount} collections`);
+    console.log(`Wallet has ${matrixCount} matrix assets, ${tokenCount} token assets, and ${collectionCount} collections`);
 }
 
 app.listen(HOST_PORT, '0.0.0.0', async () => {

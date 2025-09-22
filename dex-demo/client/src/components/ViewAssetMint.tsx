@@ -15,10 +15,8 @@ import {
     MenuItem,
 } from "@mui/material";
 
-function ViewAssetMint({ asset, onSave }: { asset: any, onSave: () => void }) {
+function ViewAssetMint({ asset, onMint }: { asset: any, onMint: () => void }) {
     const { did } = useParams();
-    const navigate = useNavigate();
-    const auth = useAuth();
     const api = useApi();
     const { showSnackbar } = useSnackbar();
 
@@ -40,7 +38,7 @@ function ViewAssetMint({ asset, onSave }: { asset: any, onSave: () => void }) {
             try {
                 const getLicenses = await api.get(`/licenses`);
                 const getRates = await api.get(`/rates`);
-                
+
                 const licenses = getLicenses.data;
                 const licenseList = Object.keys(licenses).sort();
                 const rates = getRates.data;
@@ -71,7 +69,7 @@ function ViewAssetMint({ asset, onSave }: { asset: any, onSave: () => void }) {
         init();
     }, [asset]);
 
-    function handleEditionsChange(value: string) {
+    function changeEditions(value: string) {
         let editions = parseInt(value, 10);
 
         if (isNaN(editions)) {
@@ -100,7 +98,7 @@ function ViewAssetMint({ asset, onSave }: { asset: any, onSave: () => void }) {
         setRoyalty(royalty);
     }
 
-    async function handleAddCredits() {
+    async function addCredits() {
         try {
             const getCredits = await api.post(`/add-credits`, { amount: 1000 });
             const { balance } = getCredits.data;
@@ -112,9 +110,15 @@ function ViewAssetMint({ asset, onSave }: { asset: any, onSave: () => void }) {
         }
     }
 
-    function handleMintClick() {
+    async function mintAsset() {
         setDisableMint(true);
-        onSave();
+
+        try {
+            await api.post(`/asset/${did}/mint`, { editions, royalty, license });
+            onMint();
+        } catch (error) {
+            showSnackbar("Failed to mint asset", 'error');
+        }
     }
 
     return (
@@ -181,7 +185,7 @@ function ViewAssetMint({ asset, onSave }: { asset: any, onSave: () => void }) {
                             <TextField
                                 type="number"
                                 value={editions}
-                                onChange={(e) => handleEditionsChange(e.target.value)}
+                                onChange={(e) => changeEditions(e.target.value)}
                                 margin="normal"
                                 inputProps={{
                                     min: 0,
@@ -211,13 +215,13 @@ function ViewAssetMint({ asset, onSave }: { asset: any, onSave: () => void }) {
                         <TableCell></TableCell>
                         <TableCell>
                             <Button variant="contained" color="primary"
-                                onClick={handleMintClick}
+                                onClick={mintAsset}
                                 disabled={disableMint}
                                 style={{ marginRight: '10px' }} >
                                 Mint
                             </Button>
                             {showAddCredits &&
-                                <Button variant="contained" color="primary" onClick={handleAddCredits}>
+                                <Button variant="contained" color="primary" onClick={addCredits}>
                                     Add Credits
                                 </Button>
                             }

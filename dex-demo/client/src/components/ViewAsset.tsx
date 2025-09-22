@@ -88,7 +88,7 @@ function ViewAsset() {
                         <ViewAssetMetadata asset={asset} onSave={fetchAsset} />
                     }
                     {tab === 'mint' &&
-                        <ViewAssetMint asset={asset} onSave={fetchAsset} />
+                        <ViewAssetMint asset={asset} onMint={fetchAsset} />
                     }
                     {tab === 'pfp' &&
                         <ViewAssetPfp asset={asset} onSave={fetchAsset} />
