@@ -33,6 +33,7 @@ const WALLET_URL = process.env.DEX_WALLET_URL || 'http://localhost:4224';
 const OWNER_DID = process.env.DEX_OWNER_DID;
 const DEMO_NAME = process.env.DEX_DEMO_NAME || 'dex-demo';
 const DATABASE_TYPE = process.env.DEX_DATABASE_TYPE || 'json'; // 'json' or
+let DEMO_DID: string;
 
 const app = express();
 const logins: Record<string, {
@@ -712,6 +713,51 @@ app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Resp
     }
 });
 
+app.post('/api/asset/:did/unmint', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+        const did = req.params.did;
+        const asset = await keymaster.resolveAsset(did);
+
+        if (!asset) {
+            res.status(404).send("Asset not found");
+            return;
+        }
+
+        const owner = asset.matrix?.owner;
+
+        if (!req.session.user || req.session.user.did !== owner) {
+            res.status(403).json({ message: 'Forbidden' });
+            return;
+        }
+
+        if (!asset.minted) {
+            res.status(400).send("Asset has not been minted");
+            return;
+        }
+
+        // All tokens must be owned by the asset owner or the exchange
+        for (const did of asset.minted.tokens) {
+            try {
+                const docs = await keymaster.resolveDID(did);
+                const tokenOwner = docs?.didDocument?.controller;
+
+                if (tokenOwner !== owner && tokenOwner !== DEMO_DID) {
+                    res.status(400).send("All tokens must be owned by the asset owner to unmint");
+                    return;
+                }
+            } catch (e) {
+                console.log(`Failed to resolve token ${did}: ${e}`);
+            }
+        }
+
+        await keymaster.updateAsset(did, { minted: null });
+
+        res.json({ ok: true, message: 'Asset unminted successfully' });
+    } catch (error: any) {
+        res.status(500).send("Failed to update asset");
+    }
+});
+
 app.post('/api/collection', isAuthenticated, async (req: Request, res: Response) => {
     try {
         if (!req.session.user?.did) {
@@ -985,22 +1031,20 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 async function verifyWallet(): Promise<void> {
-    let demoDID: string;
-
     try {
         const docs = await keymaster.resolveDID(DEMO_NAME);
         if (!docs.didDocument?.id) {
             throw new Error(`No DID found for ${DEMO_NAME}`);
         }
-        demoDID = docs.didDocument.id;
+        DEMO_DID = docs.didDocument.id;
     }
     catch (error) {
         console.log(`Creating ID ${DEMO_NAME}`);
-        demoDID = await keymaster.createId(DEMO_NAME);
+        DEMO_DID = await keymaster.createId(DEMO_NAME);
     }
 
     await keymaster.setCurrentId(DEMO_NAME);
-    console.log(`${DEMO_NAME} wallet DID ${demoDID}`);
+    console.log(`${DEMO_NAME} wallet DID ${DEMO_DID}`);
 
     const assets = await keymaster.listAssets();
     console.log(`Wallet has ${assets.length} assets`);

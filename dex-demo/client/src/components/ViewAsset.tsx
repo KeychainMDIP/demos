@@ -13,6 +13,7 @@ import {
 import ViewAssetMetadata from "./ViewAssetMetadata.js";
 import ViewAssetPfp from "./ViewAssetPfp.js";
 import ViewAssetMint from "./ViewAssetMint.js";
+import ViewAssetToken from "./ViewAssetToken.js";
 
 function ViewAsset() {
     const { did } = useParams();
@@ -49,6 +50,16 @@ function ViewAsset() {
 
     if (!asset || !asset.image) {
         return <></>;
+    }
+
+    async function mintAsset() {
+        await fetchAsset();
+        setTab('token');
+    }
+
+    async function unmintAsset() {
+        await fetchAsset();
+        setTab('mint');
     }
 
     return (
@@ -88,7 +99,10 @@ function ViewAsset() {
                         <ViewAssetMetadata asset={asset} onSave={fetchAsset} />
                     }
                     {tab === 'mint' &&
-                        <ViewAssetMint asset={asset} onMint={fetchAsset} />
+                        <ViewAssetMint asset={asset} onMint={mintAsset} />
+                    }
+                    {tab === 'token' &&
+                        <ViewAssetToken asset={asset} onUnmint={unmintAsset} />
                     }
                     {tab === 'pfp' &&
                         <ViewAssetPfp asset={asset} onSave={fetchAsset} />
