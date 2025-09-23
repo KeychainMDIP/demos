@@ -64,7 +64,7 @@ function ViewAsset() {
 
     return (
         <Box sx={{ width: '100%', p: 3 }}>
-            <Typography variant="h4">"{asset.title || 'no title'}" by {asset.owner.name}</Typography>
+            <Typography variant="h4">"{asset.title || 'no title'}" by {asset.creator.name}</Typography>
             <div className="container">
                 <div className="left-pane">
                     <img src={`/api/ipfs/${asset.image.cid}`} alt={asset.name} style={{ width: '100%', height: 'auto' }} />
@@ -79,7 +79,7 @@ function ViewAsset() {
                         scrollButtons="auto"
                     >
                         <Tab key="metadata" value="metadata" label={'Metadata'} />
-                        {auth.isAuthenticated && !asset.minted && asset.matrix?.owner === auth.userDID &&
+                        {!asset.minted && !asset.token && auth.isAuthenticated && asset.matrix?.owner === auth.userDID &&
                             <Tab key="mint" value="mint" label={'Mint'} />
                         }
                         {asset.minted &&

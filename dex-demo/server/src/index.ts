@@ -562,17 +562,62 @@ app.get('/api/did/:id', async (req: Request, res: Response) => {
 
 app.get('/api/asset/:did', async (req: Request, res: Response) => {
     try {
+        const currentDb = await db.loadDb();
+        const users = currentDb.users || {};
         const asset = await keymaster.resolveAsset(req.params.did);
+
+        async function fetchUser(did: string) {
+            if (!users[did]) {
+                return {
+                    did,
+                    name: 'Unknown',
+                };
+            }
+
+            const pfp = {
+                did: users[did].pfp || currentDb.settings?.pfp,
+                cid: undefined,
+            };
+
+            if (pfp.did) {
+                try {
+                    const pfpAsset = await keymaster.resolveAsset(pfp.did);
+                    if (pfpAsset && pfpAsset.image) {
+                        pfp.cid = pfpAsset.image.cid;
+                    }
+                } catch (e) {
+                    console.log(`Failed to resolve profile picture ${pfp.did}: ${e}`);
+                }
+            }
+
+            return {
+                did,
+                name: users[did].name || 'Anon',
+                pfp,
+            };
+        }
+
+        async function fetchTokenOwner(did: string) {
+            const docs = await keymaster.resolveDID(did);
+            let tokenOwner = docs?.didDocument?.controller || '';
+
+            if (tokenOwner === DEMO_DID) {
+                tokenOwner = asset.matrix.owner;
+            }
+
+            return fetchUser(tokenOwner);
+        }
+
+        if (asset.token?.matrix) {
+            const { matrix } = await keymaster.resolveAsset(asset.token.matrix);
+            asset.matrix = matrix;
+        }
 
         if (asset.matrix) {
             asset.matrix.original = asset.cloned;
             asset.did = req.params.did;
 
-            const currentDb = await db.loadDb();
-            const users = currentDb.users || {};
-
-            asset.owner = users[asset.matrix.owner] || {};
-            asset.owner.did = asset.matrix.owner;
+            asset.creator = await fetchUser(asset.matrix.owner);
 
             if (asset.matrix.collection) {
                 try {
@@ -589,57 +634,24 @@ app.get('/api/asset/:did', async (req: Request, res: Response) => {
                 }
             }
         } else {
-            asset.owner = {};
+            asset.creator = {};
         }
 
         if (asset.minted) {
-            const currentDb = await db.loadDb();
-            const users = currentDb.users || {};
-
             // Replace each did in asset.minted.tokens with { did, ownerName, ownerDID, ownerPfp }
             asset.minted.tokens = await Promise.all(asset.minted.tokens.map(async (tokenDID: string) => {
-                const docs = await keymaster.resolveDID(tokenDID);
-                let tokenOwner = docs?.didDocument?.controller || '';
-
-                if (tokenOwner === DEMO_DID) {
-                    tokenOwner = asset.matrix.owner;
-                }
-
-                if (users[tokenOwner]) {
-                    const pfp = {
-                        did: users[tokenOwner].pfp || currentDb.settings?.pfp,
-                        cid: undefined,
-                    };
-
-                    if (pfp.did) {
-                        try {
-                            const pfpAsset = await keymaster.resolveAsset(pfp.did);
-                            if (pfpAsset && pfpAsset.image) {
-                                pfp.cid = pfpAsset.image.cid;
-                            }
-                        } catch (e) {
-                            console.log(`Failed to resolve profile picture ${pfp.did}: ${e}`);
-                        }
-                    }
-
-                    return {
-                        did: tokenDID,
-                        owner: {
-                            did: tokenOwner,
-                            name: users[tokenOwner].name,
-                            pfp,
-                        }
-                    };
-                } else {
-                    return {
-                        did: tokenDID,
-                        owner: {
-                            did: tokenOwner,
-                            name: 'Unknown',
-                        }
-                    };
-                }
+                const owner = await fetchTokenOwner(tokenDID);
+                return {
+                    did: tokenDID,
+                    owner,
+                };
             }));
+        }
+
+        if (asset.token) {
+            asset.owner = await fetchTokenOwner(req.params.did);
+        } else {
+            asset.owner = asset.creator;
         }
 
         res.json({ asset });

@@ -43,7 +43,7 @@ function ViewAssetMint({ asset, onMint }: { asset: any, onMint: () => void }) {
                 const rates = getRates.data;
                 const editionRate = rates.editionRate || 100;
                 const storageRate = rates.storageRate || 0.001;
-                const credits = asset.owner?.credits || 0;
+                const credits = asset.creator?.credits || 0;
                 const fileSize = asset.image?.bytes || 0;
                 const storageFee = Math.ceil(fileSize * storageRate);
                 const editionFee = editions * editionRate;
@@ -140,8 +140,8 @@ function ViewAssetMint({ asset, onMint }: { asset: any, onMint: () => void }) {
                     </TableRow>
                     <TableRow>
                         <TableCell>Creator</TableCell>
-                        {asset.owner?.did && asset.owner?.name ? (
-                            <TableCell><a href={`/profile/${asset.owner.did}`}>{asset.owner.name}</a></TableCell>
+                        {asset.creator?.did && asset.creator?.name ? (
+                            <TableCell><a href={`/profile/${asset.creator.did}`}>{asset.creator.name}</a></TableCell>
                         ) : (
                             <TableCell>no creator</TableCell>
                         )}

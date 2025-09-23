@@ -81,7 +81,7 @@ function ViewAssetToken({ asset, onUnmint }: { asset: any, onUnmint: () => void 
                         <TableCell>Editions</TableCell>
                         <TableCell>{asset.minted.editions}</TableCell>
                     </TableRow>
-                    {asset.minted.editions > 1 &&
+                    {asset.minted.editions > 0 &&
                         <TableRow>
                             <TableCell colSpan={2}>
                                 <TableContainer component={Paper} style={{ maxHeight: '300px', overflow: 'auto' }}>

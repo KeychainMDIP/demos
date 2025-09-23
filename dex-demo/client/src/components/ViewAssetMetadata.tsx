@@ -75,7 +75,7 @@ function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }
             setCurrentTitle(asset.title || "");
             setNewTitle(asset.title || "");
 
-            setIsEditable(auth.isAuthenticated && auth.userDID === asset.matrix?.owner && !asset.minted)
+            setIsEditable(auth.isAuthenticated && auth.userDID === asset.matrix?.owner && !asset.minted && !asset.token);
         };
 
         init();
@@ -133,31 +133,39 @@ function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }
                         {asset.collection?.name ? (
                             <TableCell>
                                 <div style={{ display: 'inline-block' }}>
-                                    <Button
-                                        color="inherit"
-                                        disabled={!firstDid}
-                                        onClick={() => navigate(`/asset/${firstDid}`)}>
-                                        {'<<'}
-                                    </Button>
-                                    <Button
-                                        color="inherit"
-                                        disabled={!prevDid}
-                                        onClick={() => navigate(`/asset/${prevDid}`)}>
-                                        {'<'}
-                                    </Button>
+                                    {!asset.token && (
+                                        <>
+                                            <Button
+                                                color="inherit"
+                                                disabled={!firstDid}
+                                                onClick={() => navigate(`/asset/${firstDid}`)}>
+                                                {'<<'}
+                                            </Button>
+                                            <Button
+                                                color="inherit"
+                                                disabled={!prevDid}
+                                                onClick={() => navigate(`/asset/${prevDid}`)}>
+                                                {'<'}
+                                            </Button>
+                                        </>
+                                    )}
                                     <a href={`/collection/${asset.collection.did}`}>{asset.collection.name}</a>
-                                    <Button
-                                        color="inherit"
-                                        disabled={!nextDid}
-                                        onClick={() => navigate(`/asset/${nextDid}`)}>
-                                        {'>'}
-                                    </Button>
-                                    <Button
-                                        color="inherit"
-                                        disabled={!lastDid}
-                                        onClick={() => navigate(`/asset/${lastDid}`)}>
-                                        {'>>'}
-                                    </Button>
+                                    {!asset.token && (
+                                        <>
+                                            <Button
+                                                color="inherit"
+                                                disabled={!nextDid}
+                                                onClick={() => navigate(`/asset/${nextDid}`)}>
+                                                {'>'}
+                                            </Button>
+                                            <Button
+                                                color="inherit"
+                                                disabled={!lastDid}
+                                                onClick={() => navigate(`/asset/${lastDid}`)}>
+                                                {'>>'}
+                                            </Button>
+                                        </>
+                                    )}
                                 </div>
                             </TableCell>
                         ) : (
@@ -166,10 +174,18 @@ function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }
                     </TableRow>
                     <TableRow>
                         <TableCell>Creator</TableCell>
+                        {asset.creator?.did && asset.creator?.name ? (
+                            <TableCell><a href={`/profile/${asset.creator.did}`}>{asset.creator.name}</a></TableCell>
+                        ) : (
+                            <TableCell>no creator</TableCell>
+                        )}
+                    </TableRow>
+                    <TableRow>
+                        <TableCell>Owner</TableCell>
                         {asset.owner?.did && asset.owner?.name ? (
                             <TableCell><a href={`/profile/${asset.owner.did}`}>{asset.owner.name}</a></TableCell>
                         ) : (
-                            <TableCell>no creator</TableCell>
+                            <TableCell>no owner</TableCell>
                         )}
                     </TableRow>
                     <TableRow>
