@@ -564,7 +564,18 @@ app.get('/api/asset/:did', async (req: Request, res: Response) => {
     try {
         const currentDb = await db.loadDb();
         const users = currentDb.users || {};
-        const asset = await keymaster.resolveAsset(req.params.did);
+        const docs = await keymaster.resolveDID(req.params.did);
+
+        if (!docs?.didDocumentData) {
+            res.status(404).send("DID not found");
+            return;
+        }
+
+        let asset: any = docs.didDocumentData || {};
+
+        asset.did = req.params.did;
+        asset.created = docs.didDocumentMetadata?.created || '';
+        asset.updated = docs.didDocumentMetadata?.updated || asset.created;
 
         async function fetchUser(did: string) {
             if (!users[did]) {
@@ -615,8 +626,6 @@ app.get('/api/asset/:did', async (req: Request, res: Response) => {
 
         if (asset.matrix) {
             asset.matrix.original = asset.cloned;
-            asset.did = req.params.did;
-
             asset.creator = await fetchUser(asset.matrix.owner);
 
             if (asset.matrix.collection) {
@@ -632,6 +641,24 @@ app.get('/api/asset/:did', async (req: Request, res: Response) => {
                 } catch (e) {
                     console.log(`Failed to resolve collection ${asset.matrix.collection}: ${e}`);
                 }
+
+                const thumbnail = {
+                    did: asset.collection.thumbnail?.did || currentDb.settings?.thumbnail,
+                    cid: undefined,
+                };
+
+                if (thumbnail.did) {
+                    try {
+                        const thumbnailAsset = await keymaster.resolveAsset(thumbnail.did);
+                        if (thumbnailAsset && thumbnailAsset.image) {
+                            thumbnail.cid = thumbnailAsset.image.cid;
+                        }
+                    } catch (e) {
+                        console.log(`Failed to resolve profile picture ${thumbnail.did}: ${e}`);
+                    }
+                }
+
+                asset.collection.thumbnail = thumbnail;
             }
         } else {
             asset.creator = {};

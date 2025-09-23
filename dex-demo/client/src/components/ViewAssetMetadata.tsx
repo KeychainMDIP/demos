@@ -189,6 +189,14 @@ function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }
                         )}
                     </TableRow>
                     <TableRow>
+                        <TableCell>Created</TableCell>
+                        <TableCell>{new Date(asset.created).toLocaleString()}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                        <TableCell>Updated</TableCell>
+                        <TableCell>{new Date(asset.updated).toLocaleString()}</TableCell>
+                    </TableRow>
+                    <TableRow>
                         <TableCell>File size</TableCell>
                         <TableCell>{asset.image.bytes} bytes</TableCell>
                     </TableRow>
