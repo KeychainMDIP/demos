@@ -1,11 +1,9 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import React from "react";
+import { useParams } from "react-router-dom";
 import { useSnackbar } from "../contexts/SnackbarContext.js";
 import { useAuth } from "../contexts/AuthContext.js";
 import { useApi } from "../contexts/ApiContext.js";
-import {
-    Button,
-} from "@mui/material";
+import { Button } from "@mui/material";
 
 function ViewAssetPfp({ asset, onSave }: { asset: any, onSave: () => void }) {
     const { did } = useParams();

@@ -62,7 +62,7 @@ function ViewProfile() {
     }
 
     return (
-        <Box sx={{ width: '100%', maxWidth: 1600, p: 3 }}>
+        <Box sx={{ width: '100%', p: 3 }}>
             <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
                 {profile.pfp?.cid && (
                     <img

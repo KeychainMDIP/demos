@@ -12,6 +12,8 @@ import {
 
 import ViewAssetMetadata from "./ViewAssetMetadata.js";
 import ViewAssetPfp from "./ViewAssetPfp.js";
+import ViewAssetMint from "./ViewAssetMint.js";
+import ViewAssetToken from "./ViewAssetToken.js";
 
 function ViewAsset() {
     const { did } = useParams();
@@ -50,9 +52,19 @@ function ViewAsset() {
         return <></>;
     }
 
+    async function mintAsset() {
+        await fetchAsset();
+        setTab('token');
+    }
+
+    async function unmintAsset() {
+        await fetchAsset();
+        setTab('mint');
+    }
+
     return (
-        <Box sx={{ width: '100%', maxWidth: 1600, p: 3 }}>
-            <Typography variant="h4">"{asset.title || 'no title'}" by {asset.owner.name}</Typography>
+        <Box sx={{ width: '100%', p: 3 }}>
+            <Typography variant="h4">"{asset.title || 'no title'}" by {asset.creator.name}</Typography>
             <div className="container">
                 <div className="left-pane">
                     <img src={`/api/ipfs/${asset.image.cid}`} alt={asset.name} style={{ width: '100%', height: 'auto' }} />
@@ -67,15 +79,30 @@ function ViewAsset() {
                         scrollButtons="auto"
                     >
                         <Tab key="metadata" value="metadata" label={'Metadata'} />
-                        <Tab key="token" value="token" label={'Token'} />
-                        <Tab key="buysell" value="buysell" label={'Buy/Sell'} />
+                        {!asset.minted && !asset.token && auth.isAuthenticated && asset.matrix?.owner === auth.userDID &&
+                            <Tab key="mint" value="mint" label={'Mint'} />
+                        }
+                        {asset.minted &&
+                            <Tab key="token" value="token" label={'Token'} />
+                        }
+                        {asset.minted &&
+                            <Tab key="buysell" value="buysell" label={'Buy/Sell'} />
+                        }
                         {auth.isAuthenticated &&
                             <Tab key="pfp" value="pfp" label={'Pfp'} />
                         }
-                        <Tab key="history" value="history" label={'History'} />
+                        {asset.minted &&
+                            <Tab key="history" value="history" label={'History'} />
+                        }
                     </Tabs>
                     {tab === 'metadata' &&
                         <ViewAssetMetadata asset={asset} onSave={fetchAsset} />
+                    }
+                    {tab === 'mint' &&
+                        <ViewAssetMint asset={asset} onMint={mintAsset} />
+                    }
+                    {tab === 'token' &&
+                        <ViewAssetToken asset={asset} onUnmint={unmintAsset} />
                     }
                     {tab === 'pfp' &&
                         <ViewAssetPfp asset={asset} onSave={fetchAsset} />

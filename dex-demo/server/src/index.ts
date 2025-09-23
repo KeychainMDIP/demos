@@ -33,6 +33,7 @@ const WALLET_URL = process.env.DEX_WALLET_URL || 'http://localhost:4224';
 const OWNER_DID = process.env.DEX_OWNER_DID;
 const DEMO_NAME = process.env.DEX_DEMO_NAME || 'dex-demo';
 const DATABASE_TYPE = process.env.DEX_DATABASE_TYPE || 'json'; // 'json' or
+let DEMO_DID: string;
 
 const app = express();
 const logins: Record<string, {
@@ -177,6 +178,30 @@ app.get('/api/version', async (_: Request, res: Response) => {
         console.log(error);
         res.status(500).send(String(error));
     }
+});
+
+const ValidLicenses = {
+    "CC BY": "https://creativecommons.org/licenses/by/4.0/",
+    "CC BY-SA": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "CC BY-NC": "https://creativecommons.org/licenses/by-nc/4.0/",
+    "CC BY-ND": "https://creativecommons.org/licenses/by-nd/4.0/",
+    "CC BY-NC-SA": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "CC BY-NC-ND": "https://creativecommons.org/licenses/by-nc-nd/4.0/",
+    "CC0": "https://creativecommons.org/publicdomain/zero/1.0/",
+};
+
+app.get('/api/licenses', async (_: Request, res: Response) => {
+
+    res.json(ValidLicenses);
+});
+
+const MintingRates = {
+    editionRate: 100,
+    storageRate: 0.001, // per byte in credits
+};
+
+app.get('/api/rates', async (_: Request, res: Response) => {
+    res.json(MintingRates);
 });
 
 app.get('/api/challenge', async (req: Request, res: Response) => {
@@ -537,30 +562,123 @@ app.get('/api/did/:id', async (req: Request, res: Response) => {
 
 app.get('/api/asset/:did', async (req: Request, res: Response) => {
     try {
-        const asset = await keymaster.resolveAsset(req.params.did);
+        const currentDb = await db.loadDb();
+        const users = currentDb.users || {};
+        const docs = await keymaster.resolveDID(req.params.did);
 
-        if (asset.tokenized) {
-            asset.did = req.params.did;
+        if (!docs?.didDocumentData) {
+            res.status(404).send("DID not found");
+            return;
+        }
 
-            const currentDb = await db.loadDb();
-            const users = currentDb.users || {};
-            const profile = users[asset.tokenized.owner] || { name: 'Unknown User' };
-            asset.owner = profile;
+        let asset: any = docs.didDocumentData || {};
 
-            if (asset.tokenized.collection) {
+        asset.did = req.params.did;
+        asset.created = docs.didDocumentMetadata?.created || '';
+        asset.updated = docs.didDocumentMetadata?.updated || asset.created;
+
+        async function fetchUser(did: string) {
+            if (!users[did]) {
+                return {
+                    did,
+                    name: 'Unknown',
+                };
+            }
+
+            const pfp = {
+                did: users[did].pfp || currentDb.settings?.pfp,
+                cid: undefined,
+            };
+
+            if (pfp.did) {
                 try {
-                    const collection = await keymaster.resolveAsset(asset.tokenized.collection);
+                    const pfpAsset = await keymaster.resolveAsset(pfp.did);
+                    if (pfpAsset && pfpAsset.image) {
+                        pfp.cid = pfpAsset.image.cid;
+                    }
+                } catch (e) {
+                    console.log(`Failed to resolve profile picture ${pfp.did}: ${e}`);
+                }
+            }
+
+            return {
+                did,
+                name: users[did].name || 'Anon',
+                pfp,
+            };
+        }
+
+        async function fetchTokenOwner(did: string) {
+            const docs = await keymaster.resolveDID(did);
+            let tokenOwner = docs?.didDocument?.controller || '';
+
+            if (tokenOwner === DEMO_DID) {
+                tokenOwner = asset.matrix.owner;
+            }
+
+            return fetchUser(tokenOwner);
+        }
+
+        if (asset.token?.matrix) {
+            const { matrix } = await keymaster.resolveAsset(asset.token.matrix);
+            asset.matrix = matrix;
+        }
+
+        if (asset.matrix) {
+            asset.matrix.original = asset.cloned;
+            asset.creator = await fetchUser(asset.matrix.owner);
+
+            if (asset.matrix.collection) {
+                try {
+                    const collection = await keymaster.resolveAsset(asset.matrix.collection);
                     if (collection && collection.collection) {
                         asset.collection = {
                             ...collection.collection,
-                            did: asset.tokenized.collection,
+                            did: asset.matrix.collection,
                             name: collection.name,
                         };
                     }
                 } catch (e) {
-                    console.log(`Failed to resolve collection ${asset.tokenized.collection}: ${e}`);
+                    console.log(`Failed to resolve collection ${asset.matrix.collection}: ${e}`);
                 }
+
+                const thumbnail = {
+                    did: asset.collection.thumbnail?.did || currentDb.settings?.thumbnail,
+                    cid: undefined,
+                };
+
+                if (thumbnail.did) {
+                    try {
+                        const thumbnailAsset = await keymaster.resolveAsset(thumbnail.did);
+                        if (thumbnailAsset && thumbnailAsset.image) {
+                            thumbnail.cid = thumbnailAsset.image.cid;
+                        }
+                    } catch (e) {
+                        console.log(`Failed to resolve profile picture ${thumbnail.did}: ${e}`);
+                    }
+                }
+
+                asset.collection.thumbnail = thumbnail;
             }
+        } else {
+            asset.creator = {};
+        }
+
+        if (asset.minted) {
+            // Replace each did in asset.minted.tokens with { did, ownerName, ownerDID, ownerPfp }
+            asset.minted.tokens = await Promise.all(asset.minted.tokens.map(async (tokenDID: string) => {
+                const owner = await fetchTokenOwner(tokenDID);
+                return {
+                    did: tokenDID,
+                    owner,
+                };
+            }));
+        }
+
+        if (asset.token) {
+            asset.owner = await fetchTokenOwner(req.params.did);
+        } else {
+            asset.owner = asset.creator;
         }
 
         res.json({ asset });
@@ -581,7 +699,7 @@ app.patch('/api/asset/:did', isAuthenticated, async (req: Request, res: Response
             return;
         }
 
-        const owner = asset.tokenized?.owner;
+        const owner = asset.matrix?.owner;
 
         if (!req.session.user || req.session.user.did !== owner) {
             res.status(403).json({ message: 'Forbidden' });
@@ -590,6 +708,142 @@ app.patch('/api/asset/:did', isAuthenticated, async (req: Request, res: Response
 
         await keymaster.updateAsset(did, updates);
         res.json({ ok: true, message: 'Asset updated successfully' });
+    } catch (error: any) {
+        res.status(500).send("Failed to update asset");
+    }
+});
+
+app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+        const did = req.params.did;
+        const { editions, royalty, license } = req.body;
+
+        if (typeof editions !== 'number' || editions < 0 || editions > 100) {
+            res.status(400).send("Editions must be a number between 0 and 100");
+            return;
+        }
+
+        if (typeof royalty !== 'number' || royalty < 0 || royalty > 25) {
+            res.status(400).send("Royalty must be a number between 0 and 25");
+            return;
+        }
+
+        if (typeof license !== 'string' || !(license in ValidLicenses)) {
+            res.status(400).send("Invalid license");
+            return;
+        }
+
+        const asset = await keymaster.resolveAsset(did);
+
+        if (!asset) {
+            res.status(404).send("Asset not found");
+            return;
+        }
+
+        const owner = asset.matrix?.owner;
+
+        if (!req.session.user || req.session.user.did !== owner) {
+            res.status(403).json({ message: 'Forbidden' });
+            return;
+        }
+
+        if (asset.minted) {
+            res.status(400).send("Asset has already been minted");
+            return;
+        }
+
+        const currentDb = await db.loadDb();
+        const users = currentDb.users || {};
+        const user = users[owner];
+
+        if (!user) {
+            res.status(404).send("User not found");
+            return;
+        }
+
+        const storageFee = (asset.image?.bytes || 0) * MintingRates.storageRate;
+        const mintingFee = editions * MintingRates.editionRate;
+        const totalFee = storageFee + mintingFee;
+
+        if ((user.credits || 0) < totalFee) {
+            res.status(403).send("Insufficient credits");
+            return;
+        }
+
+        const tokens = [];
+
+        for (let i = 1; i <= editions; i++) {
+            const title = `${asset.title || 'Untitled'} (#${i} of ${editions})`;
+            const image = asset.image;
+            const token = {
+                edition: i,
+                matrix: did,
+            };
+
+            const editionDID = await keymaster.createAsset({ title, image, token });
+            tokens.push(editionDID);
+        }
+
+        const minted = {
+            editions,
+            royalty,
+            license,
+            tokens,
+        };
+
+        await keymaster.updateAsset(did, { minted });
+
+        user.credits = (user.credits || 0) - totalFee;
+        db.writeDb(currentDb);
+
+        res.json({ ok: true, message: 'Asset minted successfully' });
+    } catch (error: any) {
+        res.status(500).send("Failed to update asset");
+    }
+});
+
+app.post('/api/asset/:did/unmint', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+        const did = req.params.did;
+        const asset = await keymaster.resolveAsset(did);
+
+        if (!asset) {
+            res.status(404).send("Asset not found");
+            return;
+        }
+
+        const owner = asset.matrix?.owner;
+
+        if (!req.session.user || req.session.user.did !== owner) {
+            res.status(403).json({ message: 'Forbidden' });
+            return;
+        }
+
+        if (!asset.minted) {
+            res.status(400).send("Asset has not been minted");
+            return;
+        }
+
+        // All tokens must be owned by the asset owner or the exchange
+        for (const did of asset.minted.tokens) {
+            try {
+                const docs = await keymaster.resolveDID(did);
+                const tokenOwner = docs?.didDocument?.controller;
+
+                if (tokenOwner !== owner && tokenOwner !== DEMO_DID) {
+                    res.status(400).send("All tokens must be owned by the asset owner to unmint");
+                    return;
+                }
+            } catch (e) {
+                console.log(`Failed to resolve token ${did}: ${e}`);
+            }
+        }
+
+        await keymaster.updateAsset(did, { minted: null });
+
+        // TBD return credits?
+
+        res.json({ ok: true, message: 'Asset unminted successfully' });
     } catch (error: any) {
         res.status(500).send("Failed to update asset");
     }
@@ -773,11 +1027,11 @@ app.post('/api/collection/:did/add', isAuthenticated, async (req: Request, res: 
             return;
         }
 
-        const tokenized = {
+        const matrix = {
             owner: req.session.user?.did,
             collection: did,
         };
-        await keymaster.updateAsset(clone, { tokenized });
+        await keymaster.updateAsset(clone, { matrix });
 
         collection.assets.push(clone);
         await keymaster.updateAsset(did, { collection });
@@ -808,6 +1062,42 @@ app.get('/api/ipfs/:cid', async (req, res) => {
     }
 });
 
+app.post('/api/add-credits', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+        if (!req.session.user?.did) {
+            res.status(403).json({ message: 'Forbidden' });
+            return;
+        }
+
+        const { amount } = req.body;
+
+        if (!amount || typeof amount !== 'number' || amount <= 0) {
+            res.status(400).json({ message: 'Valid amount is required' });
+            return;
+        }
+
+        const did = req.session.user.did;
+        const currentDb = await db.loadDb();
+        const users = currentDb.users || {};
+
+        if (!users[did]) {
+            res.status(404).json({ message: 'User not found' });
+            return;
+        }
+
+        users[did].credits = (users[did].credits || 0) + amount;
+        db.writeDb(currentDb);
+
+        res.json({
+            ok: true,
+            message: 'Credits added successfully',
+            balance: users[did].credits,
+        });
+    } catch (error: any) {
+        res.status(500).send("Failed to add credits");
+    }
+});
+
 if (process.env.DEX_SERVE_CLIENT !== 'false') {
     const __dirname = path.dirname(fileURLToPath(import.meta.url));
     const clientBuildPath = path.join(__dirname, '../../client/build');
@@ -832,22 +1122,59 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 async function verifyWallet(): Promise<void> {
-    let demoDID: string;
-
     try {
         const docs = await keymaster.resolveDID(DEMO_NAME);
         if (!docs.didDocument?.id) {
             throw new Error(`No DID found for ${DEMO_NAME}`);
         }
-        demoDID = docs.didDocument.id;
+        DEMO_DID = docs.didDocument.id;
     }
     catch (error) {
         console.log(`Creating ID ${DEMO_NAME}`);
-        demoDID = await keymaster.createId(DEMO_NAME);
+        DEMO_DID = await keymaster.createId(DEMO_NAME);
     }
 
     await keymaster.setCurrentId(DEMO_NAME);
-    console.log(`${DEMO_NAME} wallet DID ${demoDID}`);
+    console.log(`${DEMO_NAME} wallet DID ${DEMO_DID}`);
+
+    const assets = await keymaster.listAssets();
+    console.log(`Wallet has ${assets.length} assets`);
+
+    let matrixCount = 0;
+    let tokenCount = 0;
+    let collectionCount = 0;
+
+    for (const did of assets) {
+        const asset = await keymaster.resolveAsset(did);
+
+        if (!asset) {
+            console.log(`Failed to resolve asset ${did}`);
+            continue;
+        }
+
+        if (asset.tokenized) {
+            asset.matrix = asset.tokenized;
+            asset.tokenized = null;
+            await keymaster.updateAsset(did, asset);
+            console.log(`Updated tokenized to matrix for ${did}`);
+        }
+
+        if (asset.matrix) {
+            console.log(`Asset ${did} is a matrix asset ${asset.title}`);
+            matrixCount += 1;
+        }
+
+        if (asset.token) {
+            console.log(`Asset ${did} is a token asset ${asset.title}`);
+            tokenCount += 1;
+        }
+
+        if (asset.collection) {
+            console.log(`Asset ${did} is a collection ${asset.name}`);
+            collectionCount += 1;
+        }
+    }
+    console.log(`Wallet has ${matrixCount} matrix assets, ${tokenCount} token assets, and ${collectionCount} collections`);
 }
 
 app.listen(HOST_PORT, '0.0.0.0', async () => {

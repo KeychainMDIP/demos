@@ -38,7 +38,7 @@ function ViewUsers() {
     }
 
     return (
-        <Box sx={{ width: '100%', maxWidth: 1600, p: 3 }}>
+        <Box sx={{ width: '100%', p: 3 }}>
             <Table sx={{ width: '100%' }}>
                 <TableHead>
                     <TableRow>

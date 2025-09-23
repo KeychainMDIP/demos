@@ -26,6 +26,7 @@ function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }
     const [prevDid, setPrevDid] = useState<string | null>(null);
     const [nextDid, setNextDid] = useState<string | null>(null);
     const [lastDid, setLastDid] = useState<string | null>(null);
+    const [isEditable, setIsEditable] = useState<boolean>(false);
 
     function findAdjacentDids() {
         const list = asset.collection?.assets || [];
@@ -73,6 +74,8 @@ function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }
 
             setCurrentTitle(asset.title || "");
             setNewTitle(asset.title || "");
+
+            setIsEditable(auth.isAuthenticated && auth.userDID === asset.matrix?.owner && !asset.minted && !asset.token);
         };
 
         init();
@@ -97,7 +100,7 @@ function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }
                 <TableBody>
                     <TableRow>
                         <TableCell>Title</TableCell>
-                        {auth.isAuthenticated && auth.userDID === asset.tokenized.owner ? (
+                        {isEditable ? (
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                                 <TextField
                                     label=""
@@ -130,31 +133,39 @@ function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }
                         {asset.collection?.name ? (
                             <TableCell>
                                 <div style={{ display: 'inline-block' }}>
-                                    <Button
-                                        color="inherit"
-                                        disabled={!firstDid}
-                                        onClick={() => navigate(`/asset/${firstDid}`)}>
-                                        {'<<'}
-                                    </Button>
-                                    <Button
-                                        color="inherit"
-                                        disabled={!prevDid}
-                                        onClick={() => navigate(`/asset/${prevDid}`)}>
-                                        {'<'}
-                                    </Button>
+                                    {!asset.token && (
+                                        <>
+                                            <Button
+                                                color="inherit"
+                                                disabled={!firstDid}
+                                                onClick={() => navigate(`/asset/${firstDid}`)}>
+                                                {'<<'}
+                                            </Button>
+                                            <Button
+                                                color="inherit"
+                                                disabled={!prevDid}
+                                                onClick={() => navigate(`/asset/${prevDid}`)}>
+                                                {'<'}
+                                            </Button>
+                                        </>
+                                    )}
                                     <a href={`/collection/${asset.collection.did}`}>{asset.collection.name}</a>
-                                    <Button
-                                        color="inherit"
-                                        disabled={!nextDid}
-                                        onClick={() => navigate(`/asset/${nextDid}`)}>
-                                        {'>'}
-                                    </Button>
-                                    <Button
-                                        color="inherit"
-                                        disabled={!lastDid}
-                                        onClick={() => navigate(`/asset/${lastDid}`)}>
-                                        {'>>'}
-                                    </Button>
+                                    {!asset.token && (
+                                        <>
+                                            <Button
+                                                color="inherit"
+                                                disabled={!nextDid}
+                                                onClick={() => navigate(`/asset/${nextDid}`)}>
+                                                {'>'}
+                                            </Button>
+                                            <Button
+                                                color="inherit"
+                                                disabled={!lastDid}
+                                                onClick={() => navigate(`/asset/${lastDid}`)}>
+                                                {'>>'}
+                                            </Button>
+                                        </>
+                                    )}
                                 </div>
                             </TableCell>
                         ) : (
@@ -163,11 +174,27 @@ function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }
                     </TableRow>
                     <TableRow>
                         <TableCell>Creator</TableCell>
-                        {asset.owner?.name ? (
-                            <TableCell><a href={`/profile/${asset.tokenized.owner}`}>{asset.owner.name}</a></TableCell>
+                        {asset.creator?.did && asset.creator?.name ? (
+                            <TableCell><a href={`/profile/${asset.creator.did}`}>{asset.creator.name}</a></TableCell>
                         ) : (
                             <TableCell>no creator</TableCell>
                         )}
+                    </TableRow>
+                    <TableRow>
+                        <TableCell>Owner</TableCell>
+                        {asset.owner?.did && asset.owner?.name ? (
+                            <TableCell><a href={`/profile/${asset.owner.did}`}>{asset.owner.name}</a></TableCell>
+                        ) : (
+                            <TableCell>no owner</TableCell>
+                        )}
+                    </TableRow>
+                    <TableRow>
+                        <TableCell>Created</TableCell>
+                        <TableCell>{new Date(asset.created).toLocaleString()}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                        <TableCell>Updated</TableCell>
+                        <TableCell>{new Date(asset.updated).toLocaleString()}</TableCell>
                     </TableRow>
                     <TableRow>
                         <TableCell>File size</TableCell>
