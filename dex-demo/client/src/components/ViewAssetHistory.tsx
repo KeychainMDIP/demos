@@ -8,7 +8,7 @@ import {
     TableHead,
     Paper,
 } from '@mui/material';
-import { format } from "date-fns";
+import { formatTime } from "../utils.js";
 import UserBadge from "./UserBadge.js";
 
 function ViewAssetHistory({ asset }: { asset: any }) {
@@ -26,11 +26,6 @@ function ViewAssetHistory({ asset }: { asset: any }) {
 
     if (!asset || !history) {
         return;
-    }
-
-    function formatTime(timestamp: string) {
-        const date = new Date(timestamp);
-        return format(date, "yyyy-MM-dd HH:mm:ss");
     }
 
     function HistoryRow({ record }: { record: any }) {
