@@ -124,6 +124,8 @@ function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }
                                     Save
                                 </Button>
                             </Box>
+                        ) : asset.token?.matrix ? (
+                            <TableCell><a href={`/asset/${asset.token?.matrix}`}>{asset.title || 'no title'}</a></TableCell>
                         ) : (
                             <TableCell>{asset.title || 'no title'}</TableCell>
                         )}
