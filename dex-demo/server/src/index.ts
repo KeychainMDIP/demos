@@ -784,11 +784,18 @@ app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Resp
             tokens.push(editionDID);
         }
 
+        const event = {
+            type: 'mint',
+            date: new Date().toISOString(),
+            actor: owner,
+        };
+
         const minted = {
             editions,
             royalty,
             license,
             tokens,
+            history: [event],
         };
 
         await keymaster.updateAsset(did, { minted });
