@@ -14,6 +14,7 @@ import ViewAssetMetadata from "./ViewAssetMetadata.js";
 import ViewAssetPfp from "./ViewAssetPfp.js";
 import ViewAssetMint from "./ViewAssetMint.js";
 import ViewAssetToken from "./ViewAssetToken.js";
+import ViewAssetHistory from "./ViewAssetHistory.js";
 
 function ViewAsset() {
     const { did } = useParams();
@@ -106,6 +107,9 @@ function ViewAsset() {
                     }
                     {tab === 'pfp' &&
                         <ViewAssetPfp asset={asset} onSave={fetchAsset} />
+                    }
+                    {tab === 'history' &&
+                        <ViewAssetHistory asset={asset} />
                     }
                 </div>
             </div>

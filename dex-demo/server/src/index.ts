@@ -786,7 +786,7 @@ app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Resp
 
         const event = {
             type: 'mint',
-            date: new Date().toISOString(),
+            time: new Date().toISOString(),
             actor: owner,
         };
 
