@@ -13,6 +13,7 @@ import {
     TableRow,
     Paper,
 } from "@mui/material";
+import UserBadge from "./UserBadge.js";
 
 function ViewAssetToken({ asset, onUnmint }: { asset: any, onUnmint: () => void }) {
     const { did } = useParams();
@@ -99,21 +100,7 @@ function ViewAssetToken({ asset, onUnmint }: { asset: any, onUnmint: () => void 
                                                         <a href={`/asset/${token.did}`}>{index + 1} of {asset.minted.editions}</a>
                                                     </TableCell>
                                                     <TableCell>
-                                                        <div style={{ display: 'flex', alignItems: 'center', fontSize: '1.0em', marginLeft: '0.5em', marginRight: '0.5em' }}>
-                                                            {token.owner.pfp.cid &&
-                                                                <img
-                                                                    src={`/api/ipfs/${token.owner.pfp.cid}`}
-                                                                    alt=""
-                                                                    style={{
-                                                                        width: '30px',
-                                                                        height: '30px',
-                                                                        objectFit: 'cover',
-                                                                        marginRight: '10px',
-                                                                        borderRadius: '50%',
-                                                                    }}
-                                                                />
-                                                            } <a href={`/profile/${token.owner.did}`} >{token.owner.name}</a>
-                                                        </div>
+                                                        <UserBadge user={token.owner} />
                                                     </TableCell>
                                                 </TableRow>
                                             ))}
