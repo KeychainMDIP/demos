@@ -86,7 +86,7 @@ function ViewAsset() {
                             <Tab key="token" value="token" label={'Token'} />
                         }
                         {asset.minted &&
-                            <Tab key="buysell" value="buysell" label={'Buy/Sell'} />
+                            <Tab key="trade" value="trade" label={'Trade'} />
                         }
                         {auth.isAuthenticated &&
                             <Tab key="pfp" value="pfp" label={'Pfp'} />
