@@ -15,6 +15,7 @@ import ViewAssetPfp from "./ViewAssetPfp.js";
 import ViewAssetMint from "./ViewAssetMint.js";
 import ViewAssetToken from "./ViewAssetToken.js";
 import ViewAssetHistory from "./ViewAssetHistory.js";
+import ViewAssetTrade from "./ViewAssetTrade.js";
 
 function ViewAsset() {
     const { did } = useParams();
@@ -104,6 +105,9 @@ function ViewAsset() {
                     }
                     {tab === 'token' &&
                         <ViewAssetToken asset={asset} onUnmint={unmintAsset} />
+                    }
+                    {tab === 'trade' &&
+                        <ViewAssetTrade asset={asset} />
                     }
                     {tab === 'pfp' &&
                         <ViewAssetPfp asset={asset} onSave={fetchAsset} />

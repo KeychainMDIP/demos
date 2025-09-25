@@ -608,7 +608,7 @@ app.get('/api/asset/:did', async (req: Request, res: Response) => {
             };
         }
 
-        async function fetchTokenOwner(did: string) {
+        async function fetchTokenInfo(did: string) {
             const docs = await keymaster.resolveDID(did);
             let tokenOwner = docs?.didDocument?.controller || '';
 
@@ -616,7 +616,13 @@ app.get('/api/asset/:did', async (req: Request, res: Response) => {
                 tokenOwner = asset.matrix.owner;
             }
 
-            return fetchUser(tokenOwner);
+            const owner: any = await fetchUser(tokenOwner);
+            const data: any = docs?.didDocumentData || {};
+            const title: string = data.title || 'Untitled';
+            const edition: number = data.token?.edition || 0;
+            const price: number = data.token?.price || 0;
+
+            return { owner, title, edition, price };
         }
 
         if (asset.token?.matrix) {
@@ -665,18 +671,22 @@ app.get('/api/asset/:did', async (req: Request, res: Response) => {
         }
 
         if (asset.minted) {
-            // Replace each did in asset.minted.tokens with { did, ownerName, ownerDID, ownerPfp }
+            // Replace each did in asset.minted.tokens with enriched info
             asset.minted.tokens = await Promise.all(asset.minted.tokens.map(async (tokenDID: string) => {
-                const owner = await fetchTokenOwner(tokenDID);
+                const { title, edition, price, owner } = await fetchTokenInfo(tokenDID);
                 return {
                     did: tokenDID,
+                    title,
+                    edition,
+                    price,
                     owner,
                 };
             }));
         }
 
         if (asset.token) {
-            asset.owner = await fetchTokenOwner(req.params.did);
+            const { owner } = await fetchTokenInfo(req.params.did);
+            asset.owner = owner;
         } else {
             asset.owner = asset.creator;
         }
