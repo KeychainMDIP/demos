@@ -107,7 +107,7 @@ function ViewAsset() {
                         <ViewAssetToken asset={asset} onUnmint={unmintAsset} />
                     }
                     {tab === 'trade' &&
-                        <ViewAssetTrade asset={asset} />
+                        <ViewAssetTrade asset={asset} onSave={fetchAsset} />
                     }
                     {tab === 'pfp' &&
                         <ViewAssetPfp asset={asset} onSave={fetchAsset} />

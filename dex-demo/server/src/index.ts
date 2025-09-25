@@ -709,14 +709,56 @@ app.patch('/api/asset/:did', isAuthenticated, async (req: Request, res: Response
             return;
         }
 
-        const owner = asset.matrix?.owner;
+        const owner = asset.matrix?.owner || asset.token?.owner;
 
         if (!req.session.user || req.session.user.did !== owner) {
             res.status(403).json({ message: 'Forbidden' });
             return;
         }
 
-        await keymaster.updateAsset(did, updates);
+        const data: any = {};
+
+        if (updates.title !== undefined) {
+            data.title = updates.title;
+        }
+
+        let event;
+
+        if (updates.price !== undefined) {
+            if (!asset.token) {
+                res.status(400).send("Only token assets can be listed for sale");
+                return;
+            }
+            data.token = {
+                ...asset.token,
+                price: updates.price,
+            };
+
+            event = {
+                type: 'list',
+                time: new Date().toISOString(),
+                actor: owner,
+                details: {
+                    price: updates.price,
+                    edition: data.token.edition,
+                    title: asset.title,
+                    did,
+                }
+            };
+        }
+
+        await keymaster.updateAsset(did, data);
+
+        if (event) {
+            const matrixDID = asset.token?.matrix;
+            const matrixAsset = await keymaster.resolveAsset(matrixDID);
+            if (matrixAsset.minted) {
+                const minted = matrixAsset.minted;
+                minted.history.push(event);
+                await keymaster.updateAsset(matrixDID, { minted });
+            }
+        }
+
         res.json({ ok: true, message: 'Asset updated successfully' });
     } catch (error: any) {
         res.status(500).send("Failed to update asset");
@@ -788,6 +830,8 @@ app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Resp
             const token = {
                 edition: i,
                 matrix: did,
+                price: 0,
+                owner: owner,
             };
 
             const editionDID = await keymaster.createAsset({ title, image, token });
