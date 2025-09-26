@@ -15,7 +15,7 @@ import { useSnackbar } from "../contexts/SnackbarContext.js";
 import { useAuth } from "../contexts/AuthContext.js";
 import { useApi } from "../contexts/ApiContext.js";
 
-function ViewAssetTrade({ asset, onSave }: { asset: any, onSave: () => void  }) {
+function ViewAssetTrade({ asset, onSave }: { asset: any, onSave: () => void }) {
     const auth = useAuth();
     const api = useApi();
     const { showSnackbar } = useSnackbar();
@@ -44,6 +44,7 @@ function ViewAssetTrade({ asset, onSave }: { asset: any, onSave: () => void  }) 
         const [title, setTitle] = useState<string>("");
         const [price, setPrice] = useState<number>(0);
         const [disableSave, setDisableSave] = useState<boolean>(true);
+        const [disableBuy, setDisableBuy] = useState<boolean>(false);
 
         useEffect(() => {
             const fetchInfo = async () => {
@@ -58,7 +59,6 @@ function ViewAssetTrade({ asset, onSave }: { asset: any, onSave: () => void  }) 
             try {
                 await api.patch(`/asset/${edition.did}`, { price });
                 showSnackbar(price ? "Price updated" : "Edition delisted", 'success');
-                setDisableSave(true);
                 edition.price = price;
             } catch (error) {
                 showSnackbar("Failed to update price", 'error');
@@ -68,9 +68,32 @@ function ViewAssetTrade({ asset, onSave }: { asset: any, onSave: () => void  }) 
             onSave();
         }
 
+        async function buyEdition() {
+            if (!auth.isAuthenticated) {
+                showSnackbar("You must be logged in to buy an edition", 'error');
+                return;
+            }
+
+            if (price > (auth.profile?.credits || 0)) {
+                showSnackbar("You do not have enough credits to buy this edition", 'error');
+                return;
+            }
+            
+            try {
+                await api.post(`/asset/${edition.did}/buy`);
+                showSnackbar("Edition bought", 'success');
+                setDisableBuy(true);
+            } catch (error) {
+                showSnackbar("Failed to buy edition", 'error');
+            }
+
+            setDisableBuy(true);
+            onSave();
+        }
+
         return (
             <TableRow>
-                <TableCell>{title}</TableCell>
+                <TableCell><a href={`/asset/${edition.did}`}>{title}</a></TableCell>
                 {edition.userIsOwner ? (
                     <TableCell>
                         <Box display="flex" alignItems="center">
@@ -103,7 +126,28 @@ function ViewAssetTrade({ asset, onSave }: { asset: any, onSave: () => void  }) 
                         </Box>
                     </TableCell>
                 ) : (
-                    <TableCell>{price ? price : 'not for sale'}</TableCell>
+                    price === 0 ? (
+                        <TableCell>not for sale</TableCell>
+                    ) : (
+                        <TableCell>
+                            <Box display="flex" alignItems="center">
+                                <TextField
+                                    value={price}
+                                    type="number"
+                                    sx={{ width: '14ch', marginRight: 1 }}
+                                    disabled={true}
+                                />
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    onClick={buyEdition}
+                                    disabled={disableBuy}
+                                >
+                                    Buy
+                                </Button>
+                            </Box>
+                        </TableCell>
+                    )
                 )}
             </TableRow>
         );
@@ -122,6 +166,18 @@ function ViewAssetTrade({ asset, onSave }: { asset: any, onSave: () => void  }) 
                     {editions.map((edition, index) => (
                         <EditionRow key={index} edition={edition} />
                     ))}
+                    {auth.isAuthenticated &&
+                        <>
+                            <TableRow>
+                                <TableCell>Owned editions</TableCell>
+                                <TableCell>{editions.filter(e => e.userIsOwner).length}</TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell>Credit balance</TableCell>
+                                <TableCell>{auth.profile?.credits}</TableCell>
+                            </TableRow>
+                        </>
+                    }
                 </TableBody>
             </Table>
         </TableContainer>

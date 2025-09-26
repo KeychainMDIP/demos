@@ -87,6 +87,19 @@ function ViewAssetHistory({ asset }: { asset: any }) {
                         );
                     }
                 }
+
+                if (record.type === 'sale') {
+                    setMessage(
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <UserBadge did={record.actor} />
+                            {`bought edition`}&nbsp;
+                            <a href={`/asset/${record.details.did}`}>
+                                #{record.details.edition} of {asset.minted.editions}
+                            </a>&nbsp;
+                            {`for ${record.details.price} credits.`}
+                        </div>
+                    );
+                }
             };
 
             fetchInfo();
