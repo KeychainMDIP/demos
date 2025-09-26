@@ -30,17 +30,19 @@ function UserBadge({ user, did, fontSize = '1.0em' }: { user?: any, did?: string
     return (
         <div style={{ display: 'flex', alignItems: 'center', fontSize: fontSize, marginLeft: '0.5em', marginRight: '0.5em' }}>
             {profile.pfp?.cid &&
-                <img
-                    src={`/api/ipfs/${profile.pfp.cid}`}
-                    alt=""
-                    style={{
-                        width: '30px',
-                        height: '30px',
-                        objectFit: 'cover',
-                        marginRight: '10px',
-                        borderRadius: '50%',
-                    }}
-                />
+                <a href={`/asset/${profile.pfp.did}`} >
+                    <img
+                        src={`/api/ipfs/${profile.pfp.cid}`}
+                        alt=""
+                        style={{
+                            width: '30px',
+                            height: '30px',
+                            objectFit: 'cover',
+                            marginRight: '10px',
+                            borderRadius: '50%',
+                        }}
+                    />
+                </a>
             } <a href={`/profile/${profile.did}`} >{profile.name}</a>
         </div>
     );
