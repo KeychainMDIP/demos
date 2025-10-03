@@ -73,7 +73,7 @@ function ViewSettingsCredits({ onSave }: { onSave: () => void }) {
         return <></>;
     }
 
-    const labelSx = { fontWeight: 'bold', width: 60 }
+    const labelSx = { fontWeight: 'bold', width: 60 };
 
     return (
         <Box sx={{ width: '100%', p: 3 }}>
