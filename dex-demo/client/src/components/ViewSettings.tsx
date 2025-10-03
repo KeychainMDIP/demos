@@ -5,6 +5,7 @@ import { useApi } from "../contexts/ApiContext.js";
 import { Box, Tab, Tabs, Typography } from "@mui/material";
 import ViewSettingsLogin from "./ViewSettingsLogin.js";
 import ViewSettingsName from "./ViewSettingsName.js";
+import ViewSettingsCredits from "./ViewSettingsCredits.js";
 
 function ViewSettings() {
     const { did } = useParams();
@@ -57,13 +58,13 @@ function ViewSettings() {
                 <Tab key="name" value="name" label={'Name'} />
                 <Tab key="collections" value="collections" label={'Collections'} />
                 <Tab key="links" value="links" label={'Links'} />
-                <Tab key="lightning" value="lightning" label={'Lightning'} />
+                <Tab key="credits" value="credits" label={'Credits'} />
             </Tabs>
             {tab === "logins" && <ViewSettingsLogin />}
             {tab === "name" && <ViewSettingsName />}
             {tab === "collections" && <div>Collections settings coming soon...</div>}
             {tab === "links" && <div>Links settings coming soon...</div>}
-            {tab === "lightning" && <div>Lightning settings coming soon...</div>}
+            {tab === "credits" && <ViewSettingsCredits />}
         </Box>
     )
 }
