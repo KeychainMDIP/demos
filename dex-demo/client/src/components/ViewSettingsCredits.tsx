@@ -4,7 +4,7 @@ import { useSnackbar } from "../contexts/SnackbarContext.js";
 import { useApi } from "../contexts/ApiContext.js";
 import { Button, Box, Table, TableBody, TableCell, TableRow, TextField } from "@mui/material";
 
-function ViewSettingsCredits() {
+function ViewSettingsCredits({ onSave }: { onSave: () => void }) {
     const { did } = useParams();
     const { showSnackbar } = useSnackbar();
     const navigate = useNavigate();
@@ -59,9 +59,11 @@ function ViewSettingsCredits() {
         try {
             const getCredits = await api.post(`/add-credits`, { amount: credits });
             const { balance } = getCredits.data;
+
             setBalance(balance);
             setCredits(0);
             showSnackbar(`Successfully added ${credits} credits`, 'success');
+            onSave();
         } catch (error) {
             showSnackbar("Failed to add credits", 'error');
         }

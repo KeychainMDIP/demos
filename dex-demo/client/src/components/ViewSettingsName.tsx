@@ -5,7 +5,7 @@ import { useApi } from "../contexts/ApiContext.js";
 import { useAuth } from "../contexts/AuthContext.js";
 import { Button, Box, Select, MenuItem, Table, TableBody, TableCell, TableRow, TextField } from "@mui/material";
 
-function ViewSettingsName() {
+function ViewSettingsName({ onSave }: { onSave: () => void }) {
     const { did } = useParams();
     const { showSnackbar } = useSnackbar();
     const navigate = useNavigate();
@@ -67,7 +67,7 @@ function ViewSettingsName() {
             await api.put(`/profile/${profile.did}/name`, { name });
             setNewName(name);
             setCurrentName(name);
-            profile.name = name;
+            onSave();
         }
         catch (error: any) {
             showSnackbar("Failed to set profile name", 'error');
@@ -80,7 +80,7 @@ function ViewSettingsName() {
             await api.put(`/profile/${profile.did}/role`, { role });
             setNewRole(role);
             setCurrentRole(role);
-            profile.role = role;
+            onSave();
         }
         catch (error: any) {
             showSnackbar("Failed to set profile role", 'error');
@@ -93,7 +93,7 @@ function ViewSettingsName() {
             await api.put(`/profile/${profile.did}/tagline`, { tagline });
             setNewTagline(tagline);
             setCurrentTagline(tagline);
-            profile.tagline = tagline;
+            onSave();
         }
         catch (error: any) {
             showSnackbar("Failed to set profile tagline", 'error');
