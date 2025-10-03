@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { useSnackbar } from "../contexts/SnackbarContext.js";
+import { useAuth } from "../contexts/AuthContext";
 import { useApi } from "../contexts/ApiContext.js";
+import { useSnackbar } from "../contexts/SnackbarContext.js";
 import {
     Button,
     Table,
@@ -16,6 +17,7 @@ import {
 
 function ViewAssetMint({ asset, onMint }: { asset: any, onMint: () => void }) {
     const { did } = useParams();
+    const auth = useAuth();
     const api = useApi();
     const { showSnackbar } = useSnackbar();
 
@@ -43,7 +45,7 @@ function ViewAssetMint({ asset, onMint }: { asset: any, onMint: () => void }) {
                 const rates = getRates.data;
                 const editionRate = rates.editionRate || 100;
                 const storageRate = rates.storageRate || 0.001;
-                const credits = asset.creator?.credits || 0;
+                const credits = auth.profile?.credits || 0;
                 const fileSize = asset.image?.bytes || 0;
                 const storageFee = Math.ceil(fileSize * storageRate);
                 const editionFee = editions * editionRate;

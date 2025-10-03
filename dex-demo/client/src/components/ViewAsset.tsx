@@ -14,6 +14,8 @@ import ViewAssetMetadata from "./ViewAssetMetadata.js";
 import ViewAssetPfp from "./ViewAssetPfp.js";
 import ViewAssetMint from "./ViewAssetMint.js";
 import ViewAssetToken from "./ViewAssetToken.js";
+import ViewAssetHistory from "./ViewAssetHistory.js";
+import ViewAssetTrade from "./ViewAssetTrade.js";
 
 function ViewAsset() {
     const { did } = useParams();
@@ -86,7 +88,7 @@ function ViewAsset() {
                             <Tab key="token" value="token" label={'Token'} />
                         }
                         {asset.minted &&
-                            <Tab key="buysell" value="buysell" label={'Buy/Sell'} />
+                            <Tab key="trade" value="trade" label={'Trade'} />
                         }
                         {auth.isAuthenticated &&
                             <Tab key="pfp" value="pfp" label={'Pfp'} />
@@ -104,8 +106,14 @@ function ViewAsset() {
                     {tab === 'token' &&
                         <ViewAssetToken asset={asset} onUnmint={unmintAsset} />
                     }
+                    {tab === 'trade' &&
+                        <ViewAssetTrade asset={asset} onSave={fetchAsset} />
+                    }
                     {tab === 'pfp' &&
                         <ViewAssetPfp asset={asset} onSave={fetchAsset} />
+                    }
+                    {tab === 'history' &&
+                        <ViewAssetHistory asset={asset} />
                     }
                 </div>
             </div>

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useSnackbar } from "../contexts/SnackbarContext.js";
 import { useApi } from "../contexts/ApiContext.js";
 import { Box, Table, TableBody, TableCell, TableHead, TableRow } from "@mui/material";
+import UserBadge from "./UserBadge.js";
 
 function ViewUsers() {
     type User = {
@@ -49,13 +50,13 @@ function ViewUsers() {
                     </TableRow>
                 </TableHead>
                 <TableBody>
-                    {Object.entries(users).map(([id, user]) => (
-                        <TableRow key={id}>
+                    {Object.entries(users).map(([did, user]) => (
+                        <TableRow key={did}>
                             <TableCell>
-                                <a href={`/profile/${id}`} style={{ textDecoration: 'none', color: '#1976d2' }}>{user.name || 'Unknown User'}</a>
+                                <UserBadge did={did} />
                             </TableCell>
                             <TableCell>
-                                <a href={`/settings/${id}`} style={{ textDecoration: 'none', color: '#1976d2' }}>{user.role}</a>
+                                <a href={`/settings/${did}`} style={{ textDecoration: 'none', color: '#1976d2' }}>{user.role}</a>
                             </TableCell>
                             <TableCell>{user.logins}</TableCell>
                             <TableCell>{user.lastLogin}</TableCell>

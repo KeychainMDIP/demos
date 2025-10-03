@@ -65,17 +65,19 @@ function ViewProfile() {
         <Box sx={{ width: '100%', p: 3 }}>
             <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
                 {profile.pfp?.cid && (
-                    <img
-                        src={`/api/ipfs/${profile.pfp.cid}`}
-                        alt="Profile pic"
-                        style={{
-                            width: '100px',
-                            height: '100px',
-                            objectFit: 'cover',
-                            marginRight: '16px',
-                            borderRadius: '50%',
-                        }}
-                    />
+                    <a href={`/asset/${profile.pfp.did}`} >
+                        <img
+                            src={`/api/ipfs/${profile.pfp.cid}`}
+                            alt="Profile pic"
+                            style={{
+                                width: '100px',
+                                height: '100px',
+                                objectFit: 'cover',
+                                marginRight: '16px',
+                                borderRadius: '50%',
+                            }}
+                        />
+                    </a>
                 )}
                 <div>
                     <Typography variant="h4">{profile.name}</Typography>

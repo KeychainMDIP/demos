@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSnackbar } from "../contexts/SnackbarContext.js";
 import { useApi } from "../contexts/ApiContext.js";
-import { differenceInDays, format } from "date-fns";
+import { formatDate } from "../utils.js";
 import { Box, Table, TableBody, TableCell, TableRow } from "@mui/material";
 
 function ViewSettingsLogin() {
@@ -35,14 +35,6 @@ function ViewSettingsLogin() {
 
         init();
     }, [did, navigate, showSnackbar]);
-
-    function formatDate(time: string) {
-        const date = new Date(time);
-        const now = new Date();
-        const days = differenceInDays(now, date);
-
-        return `${format(date, 'yyyy-MM-dd HH:mm:ss')} (${days} days ago)`;
-    }
 
     if (!profile) {
         return <></>;

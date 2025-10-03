@@ -1,42 +1,50 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSnackbar } from "../contexts/SnackbarContext.js";
 import { useApi } from "../contexts/ApiContext.js";
+import { useAuth } from "../contexts/AuthContext.js";
 import { Box, Tab, Tabs, Typography } from "@mui/material";
 import ViewSettingsLogin from "./ViewSettingsLogin.js";
 import ViewSettingsName from "./ViewSettingsName.js";
+import ViewSettingsCredits from "./ViewSettingsCredits.js";
 
 function ViewSettings() {
     const { did } = useParams();
     const navigate = useNavigate();
+    const auth = useAuth();
     const api = useApi();
     const { showSnackbar } = useSnackbar();
 
     const [profile, setProfile] = useState<any>(null);
     const [tab, setTab] = useState<string>("logins");
 
-    useEffect(() => {
+    const fetchProfile = useCallback(async () => {
         if (!did) {
             showSnackbar("No DID provided for settings.", "error");
             navigate('/');
             return;
         }
 
-        const init = async () => {
-            try {
-                const getProfile = await api.get(`/profile/${did}`);
-                const profile = getProfile.data;
+        try {
+            const getProfile = await api.get(`/profile/${did}`);
+            const profile = getProfile.data;
 
-                setProfile(profile);
-            }
-            catch (error: any) {
-                showSnackbar("Failed to load profile data", 'error');
-                navigate('/');
-            }
-        };
+            setProfile(profile);
+        }
+        catch (error: any) {
+            showSnackbar("Failed to load profile data", 'error');
+            navigate('/');
+        }
+    }, [api, did, navigate, showSnackbar]);
 
-        init();
-    }, [did, navigate, showSnackbar]);
+    async function refreshProfile() {
+        await fetchProfile();
+        auth.refreshAuth();
+    }
+
+    useEffect(() => {
+        fetchProfile();
+    }, [did]);
 
     if (!profile) {
         return <></>;
@@ -57,13 +65,13 @@ function ViewSettings() {
                 <Tab key="name" value="name" label={'Name'} />
                 <Tab key="collections" value="collections" label={'Collections'} />
                 <Tab key="links" value="links" label={'Links'} />
-                <Tab key="lightning" value="lightning" label={'Lightning'} />
+                <Tab key="credits" value="credits" label={'Credits'} />
             </Tabs>
             {tab === "logins" && <ViewSettingsLogin />}
-            {tab === "name" && <ViewSettingsName />}
+            {tab === "name" && <ViewSettingsName onSave={refreshProfile} />}
             {tab === "collections" && <div>Collections settings coming soon...</div>}
             {tab === "links" && <div>Links settings coming soon...</div>}
-            {tab === "lightning" && <div>Lightning settings coming soon...</div>}
+            {tab === "credits" && <ViewSettingsCredits onSave={refreshProfile} />}
         </Box>
     )
 }

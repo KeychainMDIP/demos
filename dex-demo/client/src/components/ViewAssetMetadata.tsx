@@ -13,6 +13,8 @@ import {
     TableRow,
     TextField,
 } from "@mui/material";
+import { formatDate } from "../utils.js";
+import UserBadge from "./UserBadge.js";
 
 function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }) {
     const { did } = useParams();
@@ -124,6 +126,8 @@ function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }
                                     Save
                                 </Button>
                             </Box>
+                        ) : asset.token?.matrix ? (
+                            <TableCell><a href={`/asset/${asset.token?.matrix}`}>{asset.title || 'no title'}</a></TableCell>
                         ) : (
                             <TableCell>{asset.title || 'no title'}</TableCell>
                         )}
@@ -174,27 +178,27 @@ function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }
                     </TableRow>
                     <TableRow>
                         <TableCell>Creator</TableCell>
-                        {asset.creator?.did && asset.creator?.name ? (
-                            <TableCell><a href={`/profile/${asset.creator.did}`}>{asset.creator.name}</a></TableCell>
+                        {asset.creator ? (
+                            <TableCell><UserBadge user={asset.creator} /></TableCell>
                         ) : (
                             <TableCell>no creator</TableCell>
                         )}
                     </TableRow>
                     <TableRow>
                         <TableCell>Owner</TableCell>
-                        {asset.owner?.did && asset.owner?.name ? (
-                            <TableCell><a href={`/profile/${asset.owner.did}`}>{asset.owner.name}</a></TableCell>
+                        {asset.owner ? (
+                            <TableCell><UserBadge user={asset.owner} /></TableCell>
                         ) : (
                             <TableCell>no owner</TableCell>
                         )}
                     </TableRow>
                     <TableRow>
                         <TableCell>Created</TableCell>
-                        <TableCell>{new Date(asset.created).toLocaleString()}</TableCell>
+                        <TableCell>{formatDate(asset.created)}</TableCell>
                     </TableRow>
                     <TableRow>
                         <TableCell>Updated</TableCell>
-                        <TableCell>{new Date(asset.updated).toLocaleString()}</TableCell>
+                        <TableCell>{formatDate(asset.updated)}</TableCell>
                     </TableRow>
                     <TableRow>
                         <TableCell>File size</TableCell>

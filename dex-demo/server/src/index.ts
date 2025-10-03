@@ -608,17 +608,6 @@ app.get('/api/asset/:did', async (req: Request, res: Response) => {
             };
         }
 
-        async function fetchTokenOwner(did: string) {
-            const docs = await keymaster.resolveDID(did);
-            let tokenOwner = docs?.didDocument?.controller || '';
-
-            if (tokenOwner === DEMO_DID) {
-                tokenOwner = asset.matrix.owner;
-            }
-
-            return fetchUser(tokenOwner);
-        }
-
         if (asset.token?.matrix) {
             const { matrix } = await keymaster.resolveAsset(asset.token.matrix);
             asset.matrix = matrix;
@@ -665,18 +654,25 @@ app.get('/api/asset/:did', async (req: Request, res: Response) => {
         }
 
         if (asset.minted) {
-            // Replace each did in asset.minted.tokens with { did, ownerName, ownerDID, ownerPfp }
-            asset.minted.tokens = await Promise.all(asset.minted.tokens.map(async (tokenDID: string) => {
-                const owner = await fetchTokenOwner(tokenDID);
+            // Replace each did in asset.minted.tokens with enriched info
+            asset.minted.tokens = await Promise.all(asset.minted.tokens.map(async (did: string) => {
+                const { token, title } = await keymaster.resolveAsset(did);
+                const owner: any = await fetchUser(token.owner);
+                const edition: number = token.edition || 0;
+                const price: number = token.price || 0;
+
                 return {
-                    did: tokenDID,
+                    did,
+                    title,
+                    edition,
+                    price,
                     owner,
                 };
             }));
         }
 
         if (asset.token) {
-            asset.owner = await fetchTokenOwner(req.params.did);
+            asset.owner = await fetchUser(asset.token.owner);
         } else {
             asset.owner = asset.creator;
         }
@@ -699,14 +695,56 @@ app.patch('/api/asset/:did', isAuthenticated, async (req: Request, res: Response
             return;
         }
 
-        const owner = asset.matrix?.owner;
+        const owner = asset.matrix?.owner || asset.token?.owner;
 
         if (!req.session.user || req.session.user.did !== owner) {
             res.status(403).json({ message: 'Forbidden' });
             return;
         }
 
-        await keymaster.updateAsset(did, updates);
+        const data: any = {};
+
+        if (updates.title !== undefined) {
+            data.title = updates.title;
+        }
+
+        let event;
+
+        if (updates.price !== undefined) {
+            if (!asset.token) {
+                res.status(400).send("Only token assets can be listed for sale");
+                return;
+            }
+            data.token = {
+                ...asset.token,
+                price: updates.price,
+            };
+
+            event = {
+                type: 'list',
+                time: new Date().toISOString(),
+                actor: owner,
+                details: {
+                    price: updates.price,
+                    edition: data.token.edition,
+                    title: asset.title,
+                    did,
+                }
+            };
+        }
+
+        await keymaster.updateAsset(did, data);
+
+        if (event) {
+            const matrixDID = asset.token?.matrix;
+            const matrixAsset = await keymaster.resolveAsset(matrixDID);
+            if (matrixAsset.minted) {
+                const minted = matrixAsset.minted;
+                minted.history.push(event);
+                await keymaster.updateAsset(matrixDID, { minted });
+            }
+        }
+
         res.json({ ok: true, message: 'Asset updated successfully' });
     } catch (error: any) {
         res.status(500).send("Failed to update asset");
@@ -761,7 +799,8 @@ app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Resp
             return;
         }
 
-        const storageFee = (asset.image?.bytes || 0) * MintingRates.storageRate;
+        const fileSize = asset.image?.bytes || 0;
+        const storageFee = Math.ceil(fileSize * MintingRates.storageRate);
         const mintingFee = editions * MintingRates.editionRate;
         const totalFee = storageFee + mintingFee;
 
@@ -778,17 +817,26 @@ app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Resp
             const token = {
                 edition: i,
                 matrix: did,
+                price: 0,
+                owner: owner,
             };
 
             const editionDID = await keymaster.createAsset({ title, image, token });
             tokens.push(editionDID);
         }
 
+        const event = {
+            type: 'mint',
+            time: new Date().toISOString(),
+            actor: owner,
+        };
+
         const minted = {
             editions,
             royalty,
             license,
             tokens,
+            history: [event],
         };
 
         await keymaster.updateAsset(did, { minted });
@@ -846,6 +894,103 @@ app.post('/api/asset/:did/unmint', isAuthenticated, async (req: Request, res: Re
         res.json({ ok: true, message: 'Asset unminted successfully' });
     } catch (error: any) {
         res.status(500).send("Failed to update asset");
+    }
+});
+
+app.post('/api/asset/:did/buy', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+        const did = req.params.did;
+        const asset = await keymaster.resolveAsset(did);
+
+        if (!asset) {
+            res.status(404).send("Asset not found");
+            return;
+        }
+
+        if (!asset.token) {
+            res.status(400).send("Asset is not a token");
+            return;
+        }
+
+        if (!req.session.user?.did) {
+            res.status(403).json({ message: 'Forbidden' });
+            return;
+        }
+
+        const buyer = req.session.user.did;
+        const seller = asset.token.owner;
+        const price = asset.token.price || 0;
+
+        if (buyer === seller) {
+            res.status(400).send("You already own this asset");
+            return;
+        }
+
+        if (price === 0) {
+            res.status(400).send("Asset is not for sale");
+            return;
+        }
+
+        const currentDb = await db.loadDb();
+        const users = currentDb.users || {};
+        const buyerProfile = users[buyer];
+        const sellerProfile = users[seller];
+
+        if (!buyerProfile) {
+            res.status(404).send("Buyer not found");
+            return;
+        }
+
+        if (!sellerProfile) {
+            res.status(404).send("Seller not found");
+            return;
+        }
+
+        if ((buyerProfile.credits || 0) < price) {
+            res.status(403).send("Insufficient credits");
+            return;
+        }
+
+        // Transfer credits
+        // TBD royalty adjustment
+        buyerProfile.credits = (buyerProfile.credits || 0) - price;
+        sellerProfile.credits = (sellerProfile.credits || 0) + price;
+
+        // Transfer token ownership (DID ownership TBD)
+        await keymaster.updateAsset(did, { token: { ...asset.token, owner: buyer, price: 0 } });
+
+        // Add to buyer's collected assets
+        if (!buyerProfile.assets) {
+            buyerProfile.assets = { created: [], collected: [], collections: [] };
+        }
+        buyerProfile.assets.collected.push(did);
+
+        // Add sale event to matrix history
+        const matrixDID = asset.token.matrix;
+        const matrixAsset = await keymaster.resolveAsset(matrixDID);
+        if (matrixAsset.minted) {
+            const minted = matrixAsset.minted;
+            const event = {
+                type: 'sale',
+                time: new Date().toISOString(),
+                actor: buyer,
+                details: {
+                    seller,
+                    price,
+                    edition: asset.token.edition,
+                    title: asset.title,
+                    did,
+                }
+            };
+            minted.history.push(event);
+            await keymaster.updateAsset(matrixDID, { minted });
+        }
+
+        db.writeDb(currentDb);
+
+        res.json({ ok: true, message: 'Asset bought successfully' });
+    } catch (error: any) {
+        res.status(500).send("Failed to buy asset");
     }
 });
 
