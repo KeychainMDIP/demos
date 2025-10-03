@@ -85,26 +85,58 @@ function ViewSettingsCredits() {
                         <TableRow>
                             <TableCell sx={labelSx}>Purchase:</TableCell>
                             <TableCell>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                                    <TextField
-                                        type="number"
-                                        value={credits}
-                                        onChange={(e) => changeCredits(e.target.value)}
-                                        margin="normal"
-                                        inputProps={{
-                                            min: 0,
-                                            max: 20000,
-                                        }}
-                                        sx={{ width: '20ch' }}
-                                    />
-                                    <Button
-                                        variant="contained"
-                                        color="primary"
-                                        onClick={addCredits}
-                                        disabled={credits === 0}
-                                    >
-                                        Add Credits
-                                    </Button>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                                        <TextField
+                                            type="number"
+                                            value={credits}
+                                            onChange={(e) => changeCredits(e.target.value)}
+                                            margin="normal"
+                                            inputProps={{
+                                                min: 0,
+                                                max: 20000,
+                                            }}
+                                            sx={{ width: '20ch' }}
+                                        />
+                                        <Button
+                                            variant="contained"
+                                            color="primary"
+                                            onClick={addCredits}
+                                            disabled={credits === 0}
+                                        >
+                                            Add Credits
+                                        </Button>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', gap: 1 }}>
+                                        <Button
+                                            variant="outlined"
+                                            size="small"
+                                            onClick={() => setCredits(1000)}
+                                        >
+                                            1K
+                                        </Button>
+                                        <Button
+                                            variant="outlined"
+                                            size="small"
+                                            onClick={() => setCredits(5000)}
+                                        >
+                                            5K
+                                        </Button>
+                                        <Button
+                                            variant="outlined"
+                                            size="small"
+                                            onClick={() => setCredits(10000)}
+                                        >
+                                            10K
+                                        </Button>
+                                        <Button
+                                            variant="outlined"
+                                            size="small"
+                                            onClick={() => setCredits(20000)}
+                                        >
+                                            20K
+                                        </Button>
+                                    </Box>
                                 </Box>
                             </TableCell>
                         </TableRow>
