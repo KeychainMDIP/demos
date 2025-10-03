@@ -799,7 +799,8 @@ app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Resp
             return;
         }
 
-        const storageFee = (asset.image?.bytes || 0) * MintingRates.storageRate;
+        const fileSize = asset.image?.bytes || 0;
+        const storageFee = Math.ceil(fileSize * MintingRates.storageRate);
         const mintingFee = editions * MintingRates.editionRate;
         const totalFee = storageFee + mintingFee;
 
