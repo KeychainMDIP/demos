@@ -9,6 +9,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import multer from 'multer';
+import sharp from 'sharp';
 
 import CipherNode from '@mdip/cipher/node';
 import GatekeeperClient from '@mdip/gatekeeper/client';
@@ -45,6 +47,21 @@ const logins: Record<string, {
 
 app.use(morgan('dev'));
 app.use(express.json());
+
+// Multer configuration for file uploads
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 10 * 1024 * 1024, // 10MB limit per file
+    },
+    fileFilter: (_req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files are allowed'));
+        }
+    },
+});
 
 // Session setup
 app.use(session({
@@ -1184,6 +1201,117 @@ app.post('/api/collection/:did/add', isAuthenticated, async (req: Request, res: 
         res.json({ ok: true, message: 'Asset added to collection' });
     } catch (error: any) {
         res.status(500).send("Could not add asset to collection");
+    }
+});
+
+app.post('/api/collection/:did/upload', isAuthenticated, upload.array('images', 100), async (req: Request, res: Response) => {
+    try {
+        const { did } = req.params;
+        const files = req.files as Express.Multer.File[];
+
+        if (!files || files.length === 0) {
+            res.status(400).send("No files uploaded");
+            return;
+        }
+
+        const data = await keymaster.resolveAsset(did);
+
+        if (!data) {
+            res.status(404).send("Collection not found");
+            return;
+        }
+
+        const collection = data.collection;
+
+        if (!collection) {
+            res.status(400).send("Not a collection");
+            return;
+        }
+
+        if (collection.owner !== req.session.user?.did) {
+            res.status(403).send("You do not own this collection");
+            return;
+        }
+
+        const currentDb = await db.loadDb();
+        const users = currentDb.users || {};
+        const user = users[collection.owner];
+
+        if (!user) {
+            res.status(404).send("User not found");
+            return;
+        }
+
+        let filesUploaded = 0;
+        let filesSkipped = 0;
+        let filesErrored = 0;
+        let bytesUploaded = 0;
+        let creditsDebited = 0;
+
+        for (const file of files) {
+            try {
+                // Get image metadata
+                const metadata = await sharp(file.buffer).metadata();
+                const fileSize = file.buffer.length;
+                const storageFee = Math.ceil(fileSize * MintingRates.storageRate);
+
+                // Check if user has enough credits
+                if ((user.credits || 0) < storageFee) {
+                    filesSkipped++;
+                    continue;
+                }
+
+                // Upload image to IPFS via gatekeeper
+                const cid = await gatekeeper.addData(file.buffer);
+
+                // Create asset with image data
+                const title = file.originalname.replace(/\.[^/.]+$/, ''); // Remove extension
+                const image = {
+                    cid,
+                    bytes: fileSize,
+                    width: metadata.width || 0,
+                    height: metadata.height || 0,
+                    type: file.mimetype,
+                };
+
+                const matrix = {
+                    owner: collection.owner,
+                    collection: did,
+                };
+
+                const assetDID = await keymaster.createAsset({ title, image, matrix });
+
+                // Add asset to collection
+                collection.assets.push(assetDID);
+
+                // Debit user credits
+                user.credits = (user.credits || 0) - storageFee;
+                creditsDebited += storageFee;
+
+                filesUploaded++;
+                bytesUploaded += fileSize;
+            } catch (error) {
+                console.error('Error processing file:', file.originalname, error);
+                filesErrored++;
+            }
+        }
+
+        // Save updated collection and user data
+        await keymaster.updateAsset(did, { collection });
+        db.writeDb(currentDb);
+
+        res.json({
+            ok: true,
+            filesUploaded,
+            filesSkipped,
+            filesErrored,
+            bytesUploaded,
+            creditsDebited,
+            message: `Uploaded ${filesUploaded} files successfully`,
+        });
+    } catch (error: any) {
+        console.error('Upload error:', error);
+        res.status(500).send("Could not upload files to collection");
     }
 });
 

@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useDropzone } from 'react-dropzone';
 import { useSnackbar } from "../contexts/SnackbarContext.js";
 import { useAuth } from "../contexts/AuthContext";
 import { useApi } from "../contexts/ApiContext.js";
-import { Box, Button, Typography } from "@mui/material";
+import { Box, Button, Modal, Typography } from "@mui/material";
 import AssetGrid from "./AssetGrid.js";
 
 function ViewCollection() {
@@ -12,7 +13,14 @@ function ViewCollection() {
     const auth = useAuth();
     const api = useApi();
     const { showSnackbar } = useSnackbar();
+
     const [collection, setCollection] = useState<any>(null);
+    const [credits, setCredits] = useState<number>(0);
+    const [budget, setBudget] = useState<number>(0);
+    const [disableUpload, setDisableUpload] = useState<boolean>(false);
+    const [modalOpen, setModalOpen] = useState<boolean>(false);
+    const [uploadResults, setUploadResults] = useState<any>(null);
+    const [uploadWarnings, setUploadWarnings] = useState<any>(null);
 
     useEffect(() => {
         if (!did) {
@@ -89,24 +97,215 @@ function ViewCollection() {
         }
     }
 
-    return (
-        <Box sx={{ width: '100%', p: 3 }}>
-            <Typography variant="h4">{collection.name} by {collection.owner.name}</Typography>
-            {auth.userDID === collection.owner.did &&
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                    <Button variant="contained" color="primary" onClick={addAsset}>
-                        Add asset...
-                    </Button>
-                    <Button variant="contained" color="primary" onClick={renameCollection}>
-                        Rename collection...
-                    </Button>
-                    <Button variant="contained" color="primary" onClick={removeCollection}>
-                        Remove collection...
-                    </Button>
-                </Box>
+    function handleUploadClick() {
+        setModalOpen(true);
+    };
+
+    function handleModalClose() {
+        setModalOpen(false);
+    };
+
+    async function uploadFiles(formData: FormData) {
+        try {
+            const response = await api.post(`/collection/${did}/upload`, formData);
+            const data = response.data;
+            let uploadResults = ''
+            let uploadWarnings = '';
+
+            if (data.filesUploaded) {
+                const mb = data.bytesUploaded / 1000000;
+                uploadResults = `You were debited ${data.creditsDebited} credits to upload ${data.filesUploaded} files (${mb.toFixed(2)} MB)`;
+                //setRefreshKey((prevKey) => prevKey + 1);
             }
-            <AssetGrid assets={collection.assets} />
-        </Box>
+
+            if (data.filesSkipped) {
+                if (data.filesSkipped === 1) {
+                    uploadWarnings = `1 file was skipped due to insufficient credits. `;
+                }
+                else {
+                    uploadWarnings = `${data.filesSkipped} files were skipped due to insufficient credits. `;
+                }
+            }
+
+            if (data.filesErrored) {
+                if (data.filesErrored === 1) {
+                    uploadWarnings += `1 file was skipped due to error reading image.`;
+                }
+                else {
+                    uploadWarnings += `${data.filesErrored} files were skipped due to error reading image.`;
+                }
+            }
+
+            setUploadResults(uploadResults);
+            setUploadWarnings(uploadWarnings);
+        } catch (error) {
+            console.error('Error uploading images:', error);
+            setUploadResults('Error uploading images');
+            setUploadWarnings('');
+        }
+    };
+
+    async function handleUpload(event: React.ChangeEvent<HTMLInputElement>) {
+        const files = event.target.files;
+        if (!files) return;
+
+        const formData = new FormData();
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (file) {
+                formData.append('images', file);
+            }
+        }
+
+        await uploadFiles(formData);
+    };
+
+    async function handlePaste(event: ClipboardEvent) {
+        const items = event.clipboardData?.items;
+        if (!items) return;
+
+        const formData = new FormData();
+
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (item && item.kind === 'file') {
+                const file = item.getAsFile();
+                if (file) {
+                    formData.append('images', file);
+                }
+            }
+        }
+
+        await uploadFiles(formData);
+    };
+
+    async function handleDrop(files: File[]) {
+        const formData = new FormData();
+
+        for (const file of files) {
+            formData.append('images', file);
+        }
+
+        await uploadFiles(formData);
+    };
+
+    function FileUploadByPaste() {
+        useEffect(() => {
+            window.addEventListener('paste', handlePaste);
+
+            // Clean up the event listener when the component unmounts
+            return () => {
+                window.removeEventListener('paste', handlePaste);
+            }
+        }, []);
+
+        return (
+            <div></div>
+        );
+    };
+
+    function FileUploadDropzone() {
+        const { getRootProps, getInputProps, isDragActive } = useDropzone({
+            onDrop: handleDrop,
+            accept: {
+                'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp']
+            },
+            multiple: true,
+            disabled: disableUpload
+        });
+
+        return (
+            <div {...getRootProps()} className={`${isDragActive ? 'dropzone active' : 'dropzone'}`}>
+                <input {...getInputProps()} />
+                {
+                    isDragActive ?
+                        <p>Drop the images here ...</p> :
+                        <div>
+                            <p>Copy/Paste or Drag 'n' Drop some images here, or click to select files</p>
+                            <p>{uploadResults}</p>
+                            <p>{uploadWarnings}</p>
+                        </div>
+                }
+            </div>
+        );
+    };
+
+    return (
+        <>
+            <Box sx={{ width: '100%', p: 3 }}>
+                <Typography variant="h4">{collection.name} by {collection.owner.name}</Typography>
+                {auth.userDID === collection.owner.did &&
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                        <Button variant="contained" color="primary" onClick={addAsset}>
+                            Add asset...
+                        </Button>
+                        <Button variant="contained" color="primary" onClick={handleUploadClick}>
+                            Upload images...
+                        </Button>
+                        <Button variant="contained" color="primary" onClick={renameCollection}>
+                            Rename collection...
+                        </Button>
+                        <Button variant="contained" color="primary" onClick={removeCollection}>
+                            Remove collection...
+                        </Button>
+                    </Box>
+                }
+                <AssetGrid assets={collection.assets} />
+            </Box>
+            <Modal
+                open={modalOpen}
+                onClose={() => handleModalClose()}
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                }}
+            >
+                <div style={{
+                    backgroundColor: '#282c34',
+                    padding: '1em',
+                    width: '400px',
+                    height: '400px',
+                    overflow: 'auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                }}>
+                    <FileUploadByPaste />
+                    <FileUploadDropzone />
+                    <p style={{ fontSize: '14px' }}>You have {credits} credits, enough to upload {budget} MB.</p>
+
+                    <input
+                        id="file-upload"
+                        type="file"
+                        name="images"
+                        accept="image/*"
+                        multiple
+                        onChange={handleUpload}
+                        disabled={disableUpload}
+                        style={{ display: 'none' }}
+                    />
+
+                    <Box sx={{ width: '100%', p: 3 }}>
+                        <label htmlFor="file-upload" className="custom-file-upload">
+                            <Button variant="contained" color="primary" component="span">
+                                Select Images
+                            </Button>
+                        </label>
+                        {disableUpload &&
+                            <Button variant="contained" color="primary" onClick={() => navigate('/profile/edit/credits')}>
+                                Credits: {credits}
+                            </Button>
+                        }
+                        <Button variant="contained" color="primary" onClick={handleModalClose}>
+                            Close
+                        </Button>
+                    </Box>
+                </div>
+            </Modal>
+        </>
     )
 }
 
