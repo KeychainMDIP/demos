@@ -38,28 +38,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         error: undefined,
     });
 
-    const refreshAuth = () => {
+    const refreshAuth = async () => {
         setState(s => ({ ...s, loading: true }));
-        axios.get("/api/check-auth")
-            .then(res => {
-                setState({
-                    ...res.data,
-                    loading: false,
-                    error: undefined,
-                });
-            })
-            .catch(err => {
-                setState({
-                    isAuthenticated: false,
-                    userDID: null,
-                    isOwner: false,
-                    isAdmin: false,
-                    isModerator: false,
-                    isMember: false,
-                    loading: false,
-                    error: err.message,
-                });
+        try {
+            const res = await axios.get("/api/check-auth");
+            setState({
+                ...res.data,
+                loading: false,
+                error: undefined,
             });
+        } catch (err: any) {
+            setState({
+                isAuthenticated: false,
+                userDID: null,
+                isOwner: false,
+                isAdmin: false,
+                isModerator: false,
+                isMember: false,
+                loading: false,
+                error: err.message,
+            });
+        }
     };
 
     useEffect(() => {

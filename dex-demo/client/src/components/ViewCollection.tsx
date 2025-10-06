@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDropzone } from 'react-dropzone';
 import { useSnackbar } from "../contexts/SnackbarContext.js";
@@ -17,33 +17,49 @@ function ViewCollection() {
     const [collection, setCollection] = useState<any>(null);
     const [credits, setCredits] = useState<number>(0);
     const [budget, setBudget] = useState<number>(0);
-    const [disableUpload, setDisableUpload] = useState<boolean>(false);
     const [modalOpen, setModalOpen] = useState<boolean>(false);
     const [uploadResults, setUploadResults] = useState<any>(null);
     const [uploadWarnings, setUploadWarnings] = useState<any>(null);
 
-    useEffect(() => {
+    async function fetchCollection() {
         if (!did) {
             showSnackbar("No DID provided for collection.", "error");
             navigate('/');
             return;
         }
 
-        const init = async () => {
-            try {
-                const getCollection = await api.get(`/collection/${did}`);
-                const collection = getCollection.data.collection;
+        try {
+            const getCollection = await api.get(`/collection/${did}`);
+            const collection = getCollection.data.collection;
 
-                setCollection(collection);
-            }
-            catch (error: any) {
-                showSnackbar("Failed to load collection data", 'error');
-                navigate('/');
-            }
-        };
+            setCollection(collection);
 
-        init();
-    }, [did, navigate, showSnackbar]);
+            // Fetch fresh auth data to get current credits
+            const authResponse = await api.get(`/check-auth`);
+            const profile = authResponse.data.profile;
+
+            const getRates = await api.get(`/rates`);
+            const rates = getRates.data;
+            const credits = profile?.credits || 0;
+            const budget = credits * rates.storageRate;
+
+            setCredits(credits);
+            setBudget(budget);
+        }
+        catch (error: any) {
+            showSnackbar("Failed to load collection data", 'error');
+            navigate('/');
+        }
+    }
+
+    async function refreshCollection() {
+        await auth.refreshAuth();
+        await fetchCollection();
+    }
+
+    useEffect(() => {
+        fetchCollection();
+    }, [did]);
 
     if (!collection) {
         return <></>;
@@ -56,11 +72,7 @@ function ViewCollection() {
             if (input) {
                 const asset = input.trim();
                 await api.post(`/collection/${did}/add`, { asset });
-
-                const getCollection = await api.get(`/collection/${did}`);
-                const collection = getCollection.data.collection;
-
-                setCollection(collection);
+                await refreshCollection();
             }
         } catch (error) {
             showSnackbar('Failed to add asset', 'error');
@@ -97,7 +109,14 @@ function ViewCollection() {
         }
     }
 
-    function handleUploadClick() {
+    function uploadAssets() {
+        if (credits === 0) {
+            showSnackbar('You have no credits to upload images. Please add credits first.', 'error');
+            return;
+        }
+
+        setUploadResults(null);
+        setUploadWarnings(null);
         setModalOpen(true);
     };
 
@@ -115,7 +134,7 @@ function ViewCollection() {
             if (data.filesUploaded) {
                 const mb = data.bytesUploaded / 1000000;
                 uploadResults = `You were debited ${data.creditsDebited} credits to upload ${data.filesUploaded} files (${mb.toFixed(2)} MB)`;
-                //setRefreshKey((prevKey) => prevKey + 1);
+                refreshCollection();
             }
 
             if (data.filesSkipped) {
@@ -212,7 +231,6 @@ function ViewCollection() {
                 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp']
             },
             multiple: true,
-            disabled: disableUpload
         });
 
         return (
@@ -240,7 +258,7 @@ function ViewCollection() {
                         <Button variant="contained" color="primary" onClick={addAsset}>
                             Add asset...
                         </Button>
-                        <Button variant="contained" color="primary" onClick={handleUploadClick}>
+                        <Button variant="contained" color="primary" onClick={uploadAssets}>
                             Upload images...
                         </Button>
                         <Button variant="contained" color="primary" onClick={renameCollection}>
@@ -263,7 +281,7 @@ function ViewCollection() {
                 }}
             >
                 <div style={{
-                    backgroundColor: '#282c34',
+                    backgroundColor: '#ffffff',
                     padding: '1em',
                     width: '400px',
                     height: '400px',
@@ -275,7 +293,7 @@ function ViewCollection() {
                 }}>
                     <FileUploadByPaste />
                     <FileUploadDropzone />
-                    <p style={{ fontSize: '14px' }}>You have {credits} credits, enough to upload {budget} MB.</p>
+                    <p style={{ fontSize: '14px' }}>You have {credits} credits, enough to upload {budget.toFixed(2)} MB.</p>
 
                     <input
                         id="file-upload"
@@ -284,21 +302,15 @@ function ViewCollection() {
                         accept="image/*"
                         multiple
                         onChange={handleUpload}
-                        disabled={disableUpload}
                         style={{ display: 'none' }}
                     />
 
-                    <Box sx={{ width: '100%', p: 3 }}>
+                    <Box>
                         <label htmlFor="file-upload" className="custom-file-upload">
                             <Button variant="contained" color="primary" component="span">
                                 Select Images
                             </Button>
                         </label>
-                        {disableUpload &&
-                            <Button variant="contained" color="primary" onClick={() => navigate('/profile/edit/credits')}>
-                                Credits: {credits}
-                            </Button>
-                        }
                         <Button variant="contained" color="primary" onClick={handleModalClose}>
                             Close
                         </Button>
