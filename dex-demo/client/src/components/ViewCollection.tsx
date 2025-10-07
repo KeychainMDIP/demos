@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDropzone } from 'react-dropzone';
 import { useSnackbar } from "../contexts/SnackbarContext.js";
@@ -17,6 +17,7 @@ function ViewCollection() {
     const [collection, setCollection] = useState<any>(null);
     const [credits, setCredits] = useState<number>(0);
     const [budget, setBudget] = useState<number>(0);
+    const [storageRate, setStorageRate] = useState<number>(0);
     const [modalOpen, setModalOpen] = useState<boolean>(false);
     const [uploadResults, setUploadResults] = useState<any>(null);
     const [uploadWarnings, setUploadWarnings] = useState<any>(null);
@@ -38,10 +39,8 @@ function ViewCollection() {
             const authResponse = await api.get(`/check-auth`);
             const profile = authResponse.data.profile;
 
-            const getRates = await api.get(`/rates`);
-            const rates = getRates.data;
             const credits = profile?.credits || 0;
-            const budget = credits * rates.storageRate;
+            const budget = credits * storageRate;
 
             setCredits(credits);
             setBudget(budget);
@@ -52,13 +51,22 @@ function ViewCollection() {
         }
     }
 
-    async function refreshCollection() {
-        await auth.refreshAuth();
-        await fetchCollection();
-    }
-
     useEffect(() => {
-        fetchCollection();
+        async function init() {
+            // Fetch rates once
+            try {
+                const getRates = await api.get(`/rates`);
+                const rates = getRates.data;
+                setStorageRate(rates.storageRate);
+            } catch (error) {
+                showSnackbar("Failed to load rates", 'error');
+            }
+
+            // Fetch collection data
+            await fetchCollection();
+        }
+
+        init();
     }, [did]);
 
     if (!collection) {
@@ -72,7 +80,7 @@ function ViewCollection() {
             if (input) {
                 const asset = input.trim();
                 await api.post(`/collection/${did}/add`, { asset });
-                await refreshCollection();
+                await fetchCollection();
             }
         } catch (error) {
             showSnackbar('Failed to add asset', 'error');
@@ -109,7 +117,14 @@ function ViewCollection() {
         }
     }
 
-    function uploadAssets() {
+    async function uploadAssets() {
+        try {
+        }
+        catch (error: any) {
+            showSnackbar("Failed to load credits data", 'error');
+            return;
+        }
+
         if (credits === 0) {
             showSnackbar('You have no credits to upload images. Please add credits first.', 'error');
             return;
@@ -134,7 +149,8 @@ function ViewCollection() {
             if (data.filesUploaded) {
                 const mb = data.bytesUploaded / 1000000;
                 uploadResults = `You were debited ${data.creditsDebited} credits to upload ${data.filesUploaded} files (${mb.toFixed(2)} MB)`;
-                refreshCollection();
+                fetchCollection();
+                showSnackbar(`Successfully uploaded ${data.filesUploaded} files`, 'success');
             }
 
             if (data.filesSkipped) {
@@ -158,7 +174,6 @@ function ViewCollection() {
             setUploadResults(uploadResults);
             setUploadWarnings(uploadWarnings);
         } catch (error) {
-            console.error('Error uploading images:', error);
             setUploadResults('Error uploading images');
             setUploadWarnings('');
         }
