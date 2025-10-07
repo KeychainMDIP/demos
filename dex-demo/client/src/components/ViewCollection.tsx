@@ -118,13 +118,6 @@ function ViewCollection() {
     }
 
     async function uploadAssets() {
-        try {
-        }
-        catch (error: any) {
-            showSnackbar("Failed to load credits data", 'error');
-            return;
-        }
-
         if (credits === 0) {
             showSnackbar('You have no credits to upload images. Please add credits first.', 'error');
             return;
