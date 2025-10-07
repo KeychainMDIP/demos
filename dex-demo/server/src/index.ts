@@ -10,7 +10,6 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import multer from 'multer';
-import sharp from 'sharp';
 
 import CipherNode from '@mdip/cipher/node';
 import GatekeeperClient from '@mdip/gatekeeper/client';
@@ -212,13 +211,13 @@ app.get('/api/licenses', async (_: Request, res: Response) => {
     res.json(ValidLicenses);
 });
 
-const MintingRates = {
+const DexRates = {
     editionRate: 100,
     storageRate: 0.001, // per byte in credits
 };
 
 app.get('/api/rates', async (_: Request, res: Response) => {
-    res.json(MintingRates);
+    res.json(DexRates);
 });
 
 app.get('/api/challenge', async (req: Request, res: Response) => {
@@ -817,8 +816,8 @@ app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Resp
         }
 
         const fileSize = asset.image?.bytes || 0;
-        const storageFee = Math.ceil(fileSize * MintingRates.storageRate);
-        const mintingFee = editions * MintingRates.editionRate;
+        const storageFee = Math.ceil(fileSize * DexRates.storageRate);
+        const mintingFee = editions * DexRates.editionRate;
         const totalFee = storageFee + mintingFee;
 
         if ((user.credits || 0) < totalFee) {
@@ -1251,9 +1250,8 @@ app.post('/api/collection/:did/upload', isAuthenticated, upload.array('images', 
         for (const file of files) {
             try {
                 // Get image metadata
-                const metadata = await sharp(file.buffer).metadata();
                 const fileSize = file.buffer.length;
-                const storageFee = Math.ceil(fileSize * MintingRates.storageRate);
+                const storageFee = Math.ceil(fileSize * DexRates.storageRate);
 
                 // Check if user has enough credits
                 if ((user.credits || 0) < storageFee) {
@@ -1261,25 +1259,27 @@ app.post('/api/collection/:did/upload', isAuthenticated, upload.array('images', 
                     continue;
                 }
 
-                // Upload image to IPFS via gatekeeper
-                const cid = await gatekeeper.addData(file.buffer);
-
                 // Create asset with image data
+                const assetDID = await keymaster.createImage(file.buffer);
+
+                if (!assetDID) {
+                    filesErrored++;
+                    continue;
+                }
+
                 const title = file.originalname.replace(/\.[^/.]+$/, ''); // Remove extension
-                const image = {
-                    cid,
-                    bytes: fileSize,
-                    width: metadata.width || 0,
-                    height: metadata.height || 0,
-                    type: file.mimetype,
-                };
 
                 const matrix = {
                     owner: collection.owner,
                     collection: did,
                 };
 
-                const assetDID = await keymaster.createAsset({ title, image, matrix });
+                const ok = await keymaster.updateAsset(assetDID, { title, matrix });
+
+                if (!ok) {
+                    filesErrored++;
+                    continue;
+                }
 
                 // Add asset to collection
                 collection.assets.push(assetDID);
