@@ -17,7 +17,6 @@ function ViewCollection() {
     const [collection, setCollection] = useState<any>(null);
     const [credits, setCredits] = useState<number>(0);
     const [budget, setBudget] = useState<number>(0);
-    const [storageRate, setStorageRate] = useState<number>(0);
     const [modalOpen, setModalOpen] = useState<boolean>(false);
     const [uploadResults, setUploadResults] = useState<any>(null);
     const [uploadWarnings, setUploadWarnings] = useState<any>(null);
@@ -35,12 +34,15 @@ function ViewCollection() {
 
             setCollection(collection);
 
+            const getRates = await api.get(`/rates`);
+            const rates = getRates.data;
+
             // Fetch fresh auth data to get current credits
             const authResponse = await api.get(`/check-auth`);
             const profile = authResponse.data.profile;
 
             const credits = profile?.credits || 0;
-            const budget = credits * storageRate;
+            const budget = credits * rates.storageRate;
 
             setCredits(credits);
             setBudget(budget);
@@ -52,21 +54,7 @@ function ViewCollection() {
     }
 
     useEffect(() => {
-        async function init() {
-            // Fetch rates once
-            try {
-                const getRates = await api.get(`/rates`);
-                const rates = getRates.data;
-                setStorageRate(rates.storageRate);
-            } catch (error) {
-                showSnackbar("Failed to load rates", 'error');
-            }
-
-            // Fetch collection data
-            await fetchCollection();
-        }
-
-        init();
+        fetchCollection();
     }, [did]);
 
     if (!collection) {
@@ -225,7 +213,7 @@ function ViewCollection() {
             return () => {
                 window.removeEventListener('paste', handlePaste);
             }
-        }, []);
+        }, [handlePaste]);
 
         return (
             <div></div>
