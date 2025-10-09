@@ -981,14 +981,14 @@ app.post('/api/asset/:did/buy', isAuthenticated, async (req: Request, res: Respo
 
             if (creatorProfile && royalty > 0) {
                 creatorProfile.credits = (creatorProfile.credits || 0) + royalty;
+                console.log(`${creatorProfile.name || 'Unknown'} (${creator}) received ${royalty} credits in royalties`);
             }
-
-            console.log(`Royalty of ${royalty} credits paid to ${creatorProfile.name || 'Unknown'} (${creator})`);
         }
 
         // Transfer credits
         buyerProfile.credits = (buyerProfile.credits || 0) - price;
         console.log(`${buyerProfile.name || 'Unknown'} (${buyer}) paid ${price} credits`);
+
         sellerProfile.credits = (sellerProfile.credits || 0) + price - royalty;
         console.log(`${sellerProfile.name || 'Unknown'} (${seller}) received ${price - royalty} credits`);
 
