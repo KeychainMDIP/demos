@@ -6,6 +6,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useApi } from "../contexts/ApiContext.js";
 import { Box, Button, Modal, Typography } from "@mui/material";
 import AssetGrid from "./AssetGrid.js";
+import UserBadge from "./UserBadge.js";
 
 function ViewCollection() {
     const { did } = useParams();
@@ -264,7 +265,10 @@ function ViewCollection() {
     return (
         <>
             <Box sx={{ width: '100%', p: 3 }}>
-                <Typography variant="h4">{collection.name} by {collection.owner.name}</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography sx={{ fontSize: '2.0em'}}>{collection.name} by</Typography>
+                    <UserBadge did={collection.owner.did} fontSize={'2.0em'} imgSize={'50px'}/>
+                </Box>
                 {auth.userDID === collection.owner.did &&
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                         <Button variant="contained" color="primary" onClick={addAsset}>

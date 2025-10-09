@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useApi } from "../contexts/ApiContext.js";
 
-function UserBadge({ user, did, fontSize = '1.0em' }: { user?: any, did?: string, fontSize?: string }) {
+function UserBadge({ user, did, fontSize = '1.0em', imgSize = '30px' }: { user?: any, did?: string, fontSize?: string, imgSize?: string }) {
     const api = useApi();
     const [profile, setProfile] = useState<any>(null);
 
@@ -35,8 +35,8 @@ function UserBadge({ user, did, fontSize = '1.0em' }: { user?: any, did?: string
                         src={`/api/ipfs/${profile.pfp.cid}`}
                         alt=""
                         style={{
-                            width: '30px',
-                            height: '30px',
+                            width: imgSize,
+                            height: imgSize,
                             objectFit: 'cover',
                             marginRight: '10px',
                             borderRadius: '50%',
