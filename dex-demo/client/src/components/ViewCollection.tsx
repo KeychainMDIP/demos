@@ -82,14 +82,30 @@ function ViewCollection() {
             if (input) {
                 const name = input.trim();
                 await api.patch(`/collection/${did}`, { name });
-
-                const getCollection = await api.get(`/collection/${did}`);
-                const collection = getCollection.data.collection;
-
-                setCollection(collection);
+                fetchCollection();
             }
         } catch (error) {
             showSnackbar('Failed to rename collection', 'error');
+        }
+    }
+
+    async function renameAssets() {
+        try {
+            const input = window.prompt("New asset name:");
+
+            if (input) {
+                const baseName = input.trim();
+
+                for (let i = 0; i < collection.assets.length; i++) {
+                    const asset = collection.assets[i];
+                    const title = `${baseName} #${i + 1}`;
+                    await api.patch(`/asset/${asset.did}`, { title });
+                }
+
+                fetchCollection();
+            }
+        } catch (error) {
+            showSnackbar('Failed to rename assets', 'error');
         }
     }
 
@@ -259,6 +275,9 @@ function ViewCollection() {
                         </Button>
                         <Button variant="contained" color="primary" onClick={renameCollection}>
                             Rename collection...
+                        </Button>
+                        <Button variant="contained" color="primary" onClick={renameAssets}>
+                            Rename assets...
                         </Button>
                         <Button variant="contained" color="primary" onClick={removeCollection}>
                             Remove collection...
