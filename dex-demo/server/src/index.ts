@@ -1031,7 +1031,7 @@ app.post('/api/asset/:did/buy', isAuthenticated, async (req: Request, res: Respo
             const body = `"${asset.title}" was sold by ${sellerProfile.name} to ${buyerProfile.name} for ${price} credits\n\n${url}\n\n - Sent from ${DEMO_NAME}`;
             const dmail: DmailMessage = {
                 to: [seller, buyer],
-                cc: [creator],
+                cc: creator ? [creator] : [],
                 subject,
                 body,
             };
