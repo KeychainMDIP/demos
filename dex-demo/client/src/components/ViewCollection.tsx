@@ -6,6 +6,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useApi } from "../contexts/ApiContext.js";
 import { Box, Button, Modal, Typography } from "@mui/material";
 import AssetGrid from "./AssetGrid.js";
+import UserBadge from "./UserBadge.js";
 
 function ViewCollection() {
     const { did } = useParams();
@@ -82,14 +83,30 @@ function ViewCollection() {
             if (input) {
                 const name = input.trim();
                 await api.patch(`/collection/${did}`, { name });
-
-                const getCollection = await api.get(`/collection/${did}`);
-                const collection = getCollection.data.collection;
-
-                setCollection(collection);
+                fetchCollection();
             }
         } catch (error) {
             showSnackbar('Failed to rename collection', 'error');
+        }
+    }
+
+    async function renameAssets() {
+        try {
+            const input = window.prompt("New asset name:");
+
+            if (input) {
+                const baseName = input.trim();
+
+                for (let i = 0; i < collection.assets.length; i++) {
+                    const asset = collection.assets[i];
+                    const title = `${baseName} #${i + 1}`;
+                    await api.patch(`/asset/${asset.did}`, { title });
+                }
+
+                fetchCollection();
+            }
+        } catch (error) {
+            showSnackbar('Failed to rename assets', 'error');
         }
     }
 
@@ -248,7 +265,10 @@ function ViewCollection() {
     return (
         <>
             <Box sx={{ width: '100%', p: 3 }}>
-                <Typography variant="h4">{collection.name} by {collection.owner.name}</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography sx={{ fontSize: '2.0em'}}>{collection.name} by</Typography>
+                    <UserBadge did={collection.owner.did} fontSize={'2.0em'} imgSize={'50px'}/>
+                </Box>
                 {auth.userDID === collection.owner.did &&
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                         <Button variant="contained" color="primary" onClick={addAsset}>
@@ -259,6 +279,9 @@ function ViewCollection() {
                         </Button>
                         <Button variant="contained" color="primary" onClick={renameCollection}>
                             Rename collection...
+                        </Button>
+                        <Button variant="contained" color="primary" onClick={renameAssets}>
+                            Rename assets...
                         </Button>
                         <Button variant="contained" color="primary" onClick={removeCollection}>
                             Remove collection...

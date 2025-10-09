@@ -16,6 +16,7 @@ import ViewAssetMint from "./ViewAssetMint.js";
 import ViewAssetToken from "./ViewAssetToken.js";
 import ViewAssetHistory from "./ViewAssetHistory.js";
 import ViewAssetTrade from "./ViewAssetTrade.js";
+import UserBadge from "./UserBadge.js";
 
 function ViewAsset() {
     const { did } = useParams();
@@ -66,7 +67,10 @@ function ViewAsset() {
 
     return (
         <Box sx={{ width: '100%', p: 3 }}>
-            <Typography variant="h4">"{asset.title || 'no title'}" by {asset.creator.name}</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography sx={{ fontSize: '2.0em' }}>"{asset.title || 'no title'}" by</Typography>
+                <UserBadge did={asset.creator.did} fontSize={'2.0em'} imgSize={'50px'} />
+            </Box>
             <div className="container">
                 <div className="left-pane">
                     <img src={`/api/ipfs/${asset.image.cid}`} alt={asset.name} style={{ width: '100%', height: 'auto' }} />
