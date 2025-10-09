@@ -13,7 +13,7 @@ import multer from 'multer';
 
 import CipherNode from '@mdip/cipher/node';
 import GatekeeperClient from '@mdip/gatekeeper/client';
-import Keymaster from '@mdip/keymaster';
+import Keymaster, { DmailMessage } from '@mdip/keymaster';
 import WalletJson from '@mdip/keymaster/wallet/json';
 import { DatabaseInterface, User } from './db/interfaces.js';
 import { DbMdip } from './db/mdip.js';
@@ -969,10 +969,11 @@ app.post('/api/asset/:did/buy', isAuthenticated, async (req: Request, res: Respo
 
         // Royalty adjustment
         let royalty = 0;
+        let creator;
 
         if (asset.token.matrix) {
             const matrix = await keymaster.resolveAsset(asset.token.matrix);
-            const creator = matrix.matrix?.owner;
+            creator = matrix.matrix?.owner;
             const creatorProfile = users[creator];
 
             if (matrix.minted?.royalty) {
@@ -1023,6 +1024,22 @@ app.post('/api/asset/:did/buy', isAuthenticated, async (req: Request, res: Respo
         }
 
         db.writeDb(currentDb);
+
+        try {
+            const subject = `Congratulations on the sale of "${asset.title}"`;
+            const url = `${HOST_URL}/asset/${did}`;
+            const body = `"${asset.title}" was sold by ${sellerProfile.name} to ${buyerProfile.name} for ${price} credits\n\n${url}\n\n - Sent from ${DEMO_NAME}`;
+            const dmail: DmailMessage = {
+                to: [seller, buyer],
+                cc: creator ? [creator] : [],
+                subject,
+                body,
+            };
+            const dmailDID = await keymaster.createDmail(dmail);
+            await keymaster.sendDmail(dmailDID);
+        } catch (error) {
+            console.error("Failed to send Dmail notification:", error);
+        }
 
         res.json({ ok: true, message: 'Asset bought successfully' });
     } catch (error: any) {

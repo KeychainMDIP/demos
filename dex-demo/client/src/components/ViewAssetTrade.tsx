@@ -78,15 +78,15 @@ function ViewAssetTrade({ asset, onSave }: { asset: any, onSave: () => void }) {
                 showSnackbar("You do not have enough credits to buy this edition", 'error');
                 return;
             }
-            
+
             try {
                 await api.post(`/asset/${edition.did}/buy`);
                 showSnackbar("Edition bought", 'success');
-                setDisableBuy(true);
             } catch (error) {
                 showSnackbar("Failed to buy edition", 'error');
             }
 
+            auth.refreshAuth();
             setDisableBuy(true);
             onSave();
         }
