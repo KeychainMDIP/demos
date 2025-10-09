@@ -1027,7 +1027,8 @@ app.post('/api/asset/:did/buy', isAuthenticated, async (req: Request, res: Respo
 
         try {
             const subject = `Congratulations on the sale of "${asset.title}"`;
-            const body = `"${asset.title}" was sold by ${sellerProfile.name} to ${buyerProfile.name} for ${price} credits\n\n${did}\n\n - Sent from ${DEMO_NAME}`;
+            const url = `${HOST_URL}/asset/${did}`;
+            const body = `"${asset.title}" was sold by ${sellerProfile.name} to ${buyerProfile.name} for ${price} credits\n\n${url}\n\n - Sent from ${DEMO_NAME}`;
             const dmail: DmailMessage = {
                 to: creator && creator !== seller ? [seller, buyer, creator] : [seller, buyer],
                 cc: [],
