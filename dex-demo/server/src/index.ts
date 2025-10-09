@@ -967,10 +967,30 @@ app.post('/api/asset/:did/buy', isAuthenticated, async (req: Request, res: Respo
             return;
         }
 
+        // Royalty adjustment
+        let royalty = 0;
+
+        if (asset.token.matrix) {
+            const matrix = await keymaster.resolveAsset(asset.token.matrix);
+            const creator = matrix.matrix?.owner;
+            const creatorProfile = users[creator];
+
+            if (matrix.minted?.royalty) {
+                royalty = Math.ceil((matrix.minted.royalty / 100) * price);
+            }
+
+            if (creatorProfile && royalty > 0) {
+                creatorProfile.credits = (creatorProfile.credits || 0) + royalty;
+            }
+
+            console.log(`Royalty of ${royalty} credits paid to ${creatorProfile.name || 'Unknown'} (${creator})`);
+        }
+
         // Transfer credits
-        // TBD royalty adjustment
         buyerProfile.credits = (buyerProfile.credits || 0) - price;
-        sellerProfile.credits = (sellerProfile.credits || 0) + price;
+        console.log(`${buyerProfile.name || 'Unknown'} (${buyer}) paid ${price} credits`);
+        sellerProfile.credits = (sellerProfile.credits || 0) + price - royalty;
+        console.log(`${sellerProfile.name || 'Unknown'} (${seller}) received ${price - royalty} credits`);
 
         // Transfer token ownership (DID ownership TBD)
         await keymaster.updateAsset(did, { token: { ...asset.token, owner: buyer, price: 0 } });
