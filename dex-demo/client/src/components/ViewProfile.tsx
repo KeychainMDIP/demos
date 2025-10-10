@@ -94,10 +94,7 @@ function ViewProfile() {
                 scrollButtons="auto"
             >
                 <Tab key="collections" value="collections" label={'Collections'} />
-                <Tab key="minted" value="minted" label={'Minted'} />
                 <Tab key="collected" value="collected" label={'Collected'} />
-                <Tab key="listed" value="listed" label={'Listed'} />
-                <Tab key="unlisted" value="unlisted" label={'Unlisted'} />
                 {profile.isUser && <Tab key="deleted" value="deleted" label={'Deleted'} />}
             </Tabs>
             {tab === 'collections' &&
