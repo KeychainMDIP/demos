@@ -386,6 +386,7 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
         const rawProfile = currentDb.users[did];
         const isUser = (req.session?.user?.did === did);
         const collections: any[] = [];
+        const collected: any[] = [];
 
         for (const collectionId of rawProfile.assets?.collections || []) {
             try {
@@ -405,13 +406,41 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
 
                     collections.push({
                         did: collectionId,
-                        ...asset.collection,
                         name: asset.name,
+                        items: asset.collection.assets.length,
                         thumbnail,
                     });
                 }
             } catch (e) {
                 console.log(`Failed to resolve collection ${collectionId}: ${e}`);
+            }
+        }
+
+        for (const assetId of rawProfile.assets?.collected || []) {
+            try {
+                const asset = await keymaster.resolveAsset(assetId);
+                if (asset) {
+                    const thumbnail = {
+                        did: asset.thumbnail || currentDb.settings?.thumbnail,
+                        cid: undefined,
+                    };
+
+                    if (thumbnail.did) {
+                        const thumbAsset = await keymaster.resolveAsset(thumbnail.did);
+                        if (thumbAsset && thumbAsset.image) {
+                            thumbnail.cid = thumbAsset.image.cid;
+                        }
+                    }
+
+                    collected.push({
+                        did: assetId,
+                        title: asset.title,
+                        image: asset.image,
+                        thumbnail,
+                    });
+                }
+            } catch (e) {
+                console.log(`Failed to resolve collected asset ${assetId}: ${e}`);
             }
         }
 
@@ -437,6 +466,7 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
             pfp,
             isUser,
             collections,
+            collected,
         };
 
         res.json(profile);
@@ -1000,7 +1030,15 @@ app.post('/api/asset/:did/buy', isAuthenticated, async (req: Request, res: Respo
         if (!buyerProfile.assets) {
             buyerProfile.assets = { created: [], collected: [], collections: [] };
         }
-        buyerProfile.assets.collected.push(did);
+
+        if (buyer !== creator) {
+            buyerProfile.assets.collected.push(did);
+        }
+
+        // Remove from seller's collected assets if present
+        if (sellerProfile.assets) {
+            sellerProfile.assets.collected = (sellerProfile.assets.collected || []).filter((a: string) => a !== did);
+        }
 
         // Add sale event to matrix history
         const matrixDID = asset.token.matrix;

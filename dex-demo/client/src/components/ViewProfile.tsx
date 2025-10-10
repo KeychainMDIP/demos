@@ -5,6 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useApi } from "../contexts/ApiContext.js";
 import { Box, Button, Tab, Tabs, Typography } from "@mui/material";
 import CollectionGrid from "./CollectionGrid.js";
+import AssetGrid from "./AssetGrid.js";
 
 function ViewProfile() {
     const { did } = useParams();
@@ -14,7 +15,7 @@ function ViewProfile() {
     const { showSnackbar } = useSnackbar();
 
     const [profile, setProfile] = useState<any>(null);
-    const [tab, setTab] = useState<string>("created");
+    const [tab, setTab] = useState<string>("collections");
 
     useEffect(() => {
         if (!did) {
@@ -92,14 +93,11 @@ function ViewProfile() {
                 variant="scrollable"
                 scrollButtons="auto"
             >
-                <Tab key="created" value="created" label={'Created'} />
-                <Tab key="minted" value="minted" label={'Minted'} />
+                <Tab key="collections" value="collections" label={'Collections'} />
                 <Tab key="collected" value="collected" label={'Collected'} />
-                <Tab key="listed" value="listed" label={'Listed'} />
-                <Tab key="unlisted" value="unlisted" label={'Unlisted'} />
                 {profile.isUser && <Tab key="deleted" value="deleted" label={'Deleted'} />}
             </Tabs>
-            {tab === 'created' &&
+            {tab === 'collections' &&
                 <Box sx={{ width: '100%', p: 3 }}>
                     {auth.userDID === did &&
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
@@ -109,6 +107,11 @@ function ViewProfile() {
                         </Box>
                     }
                     <CollectionGrid collections={profile.collections} />
+                </Box>
+            }
+            {tab === 'collected' &&
+                <Box sx={{ width: '100%', p: 3 }}>
+                    <AssetGrid assets={profile.collected} />
                 </Box>
             }
         </Box>
