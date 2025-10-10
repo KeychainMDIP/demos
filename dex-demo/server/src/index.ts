@@ -386,6 +386,7 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
         const rawProfile = currentDb.users[did];
         const isUser = (req.session?.user?.did === did);
         const collections: any[] = [];
+        const collected: any[] = [];
 
         for (const collectionId of rawProfile.assets?.collections || []) {
             try {
@@ -415,6 +416,34 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
             }
         }
 
+        for (const assetId of rawProfile.assets?.collected || []) {
+            try {
+                const asset = await keymaster.resolveAsset(assetId);
+                if (asset) {
+                    const thumbnail = {
+                        did: asset.thumbnail || currentDb.settings?.thumbnail,
+                        cid: undefined,
+                    };
+
+                    if (thumbnail.did) {
+                        const thumbAsset = await keymaster.resolveAsset(thumbnail.did);
+                        if (thumbAsset && thumbAsset.image) {
+                            thumbnail.cid = thumbAsset.image.cid;
+                        }
+                    }
+
+                    collected.push({
+                        did: assetId,
+                        title: asset.title,
+                        image: asset.image,
+                        thumbnail,
+                    });
+                }
+            } catch (e) {
+                console.log(`Failed to resolve collected asset ${assetId}: ${e}`);
+            }
+        }
+
         const pfp = {
             did: rawProfile.pfp || currentDb.settings?.pfp,
             cid: undefined,
@@ -437,6 +466,7 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
             pfp,
             isUser,
             collections,
+            collected,
         };
 
         res.json(profile);
