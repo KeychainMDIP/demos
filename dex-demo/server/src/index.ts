@@ -1030,7 +1030,15 @@ app.post('/api/asset/:did/buy', isAuthenticated, async (req: Request, res: Respo
         if (!buyerProfile.assets) {
             buyerProfile.assets = { created: [], collected: [], collections: [] };
         }
-        buyerProfile.assets.collected.push(did);
+
+        if (buyer !== creator) {
+            buyerProfile.assets.collected.push(did);
+        }
+
+        // Remove from seller's collected assets if present
+        if (sellerProfile.assets) {
+            sellerProfile.assets.collected = (sellerProfile.assets.collected || []).filter((a: string) => a !== did);
+        }
 
         // Add sale event to matrix history
         const matrixDID = asset.token.matrix;
