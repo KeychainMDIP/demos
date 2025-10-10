@@ -44,7 +44,7 @@ function CollectionCard({ collection }: { collection: any }) {
                 <img src={`/api/ipfs/${collection.thumbnail.cid}`} style={imgStyle} alt={collection.name} />
             </div>
             <p style={titleStyle}>{collection.name}</p>
-            <p style={titleStyle}>{collection.assets.length} items</p>
+            <p style={titleStyle}>{collection.items} items</p>
         </div>
     );
 };

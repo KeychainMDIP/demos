@@ -405,8 +405,8 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
 
                     collections.push({
                         did: collectionId,
-                        ...asset.collection,
                         name: asset.name,
+                        items: asset.collection.assets.length,
                         thumbnail,
                     });
                 }
