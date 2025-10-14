@@ -43,6 +43,15 @@ function ViewAssetHistory({ asset }: { asset: any }) {
                 setMessage(`unknown record type ${record.type}`);
                 setTime(formatTime(record.time));
 
+                // Create edition link for reuse
+                const editionLink = editions > 0 && record.details ? (
+                    <>
+                        <a href={`/asset/${record.details.did}`}>
+                            #{record.details.edition} of {editions}
+                        </a>&nbsp;
+                    </>
+                ) : null;
+
                 if (record.type === 'mint') {
                     if (asset.minted) {
                         if (asset.minted.editions === 1) {
@@ -75,13 +84,7 @@ function ViewAssetHistory({ asset }: { asset: any }) {
                             <div style={{ display: 'flex', alignItems: 'center' }}>
                                 <UserBadge did={record.actor} />
                                 {`listed edition`}&nbsp;
-                                {editions > 0 &&
-                                    <>
-                                        <a href={`/asset/${record.details.did}`}>
-                                            #{record.details.edition} of {editions}
-                                        </a>&nbsp;
-                                    </>
-                                }
+                                {editionLink}
                                 {`for ${record.details.price} credits.`}
                             </div>
                         );
@@ -90,13 +93,7 @@ function ViewAssetHistory({ asset }: { asset: any }) {
                             <div style={{ display: 'flex', alignItems: 'center' }}>
                                 <UserBadge did={record.actor} />
                                 {`delisted edition`}&nbsp;
-                                {editions > 0 &&
-                                    <>
-                                        <a href={`/asset/${record.details.did}`}>
-                                            #{record.details.edition} of {editions}
-                                        </a>&nbsp;
-                                    </>
-                                }
+                                {editionLink}
                             </div>
                         );
                     }
@@ -107,13 +104,7 @@ function ViewAssetHistory({ asset }: { asset: any }) {
                         <div style={{ display: 'flex', alignItems: 'center' }}>
                             <UserBadge did={record.actor} />
                             {`bought edition`}&nbsp;
-                            {editions > 0 &&
-                                <>
-                                    <a href={`/asset/${record.details.did}`}>
-                                        #{record.details.edition} of {editions}
-                                    </a>&nbsp;
-                                </>
-                            }
+                            {editionLink}
                             {`for ${record.details.price} credits.`}
                         </div>
                     );
