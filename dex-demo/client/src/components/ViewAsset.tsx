@@ -97,7 +97,7 @@ function ViewAsset() {
                         {auth.isAuthenticated &&
                             <Tab key="pfp" value="pfp" label={'Pfp'} />
                         }
-                        {asset.minted &&
+                        {(asset.minted || asset.token) &&
                             <Tab key="history" value="history" label={'History'} />
                         }
                     </Tabs>

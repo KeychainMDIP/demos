@@ -13,11 +13,17 @@ import UserBadge from "./UserBadge.js";
 
 function ViewAssetHistory({ asset }: { asset: any }) {
     const [history, setHistory] = useState([]);
+    const [editions, setEditions] = useState<number>(0);
 
     useEffect(() => {
         const fetchHistory = async () => {
             if (asset?.minted?.history) {
                 setHistory(asset.minted.history);
+                setEditions(asset.minted.editions);
+            } else if (asset?.token?.history) {
+                setHistory(asset.token.history);
+            } else {
+                setHistory([]);
             }
         };
 
@@ -49,7 +55,7 @@ function ViewAssetHistory({ asset }: { asset: any }) {
                         else {
                             setMessage(
                                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                                    <UserBadge did={record.actor} />{`minted ${asset.minted.editions} editions.`}
+                                    <UserBadge did={record.actor} />{`minted ${editions} editions.`}
                                 </div>
                             );
                         }
@@ -69,9 +75,13 @@ function ViewAssetHistory({ asset }: { asset: any }) {
                             <div style={{ display: 'flex', alignItems: 'center' }}>
                                 <UserBadge did={record.actor} />
                                 {`listed edition`}&nbsp;
-                                <a href={`/asset/${record.details.did}`}>
-                                    #{record.details.edition} of {asset.minted.editions}
-                                </a>&nbsp;
+                                {editions > 0 &&
+                                    <>
+                                        <a href={`/asset/${record.details.did}`}>
+                                            #{record.details.edition} of {editions}
+                                        </a>&nbsp;
+                                    </>
+                                }
                                 {`for ${record.details.price} credits.`}
                             </div>
                         );
@@ -80,9 +90,13 @@ function ViewAssetHistory({ asset }: { asset: any }) {
                             <div style={{ display: 'flex', alignItems: 'center' }}>
                                 <UserBadge did={record.actor} />
                                 {`delisted edition`}&nbsp;
-                                <a href={`/asset/${record.details.did}`}>
-                                    #{record.details.edition} of {asset.minted.editions}
-                                </a>.
+                                {editions > 0 &&
+                                    <>
+                                        <a href={`/asset/${record.details.did}`}>
+                                            #{record.details.edition} of {editions}
+                                        </a>&nbsp;
+                                    </>
+                                }
                             </div>
                         );
                     }
@@ -93,9 +107,13 @@ function ViewAssetHistory({ asset }: { asset: any }) {
                         <div style={{ display: 'flex', alignItems: 'center' }}>
                             <UserBadge did={record.actor} />
                             {`bought edition`}&nbsp;
-                            <a href={`/asset/${record.details.did}`}>
-                                #{record.details.edition} of {asset.minted.editions}
-                            </a>&nbsp;
+                            {editions > 0 &&
+                                <>
+                                    <a href={`/asset/${record.details.did}`}>
+                                        #{record.details.edition} of {editions}
+                                    </a>&nbsp;
+                                </>
+                            }
                             {`for ${record.details.price} credits.`}
                         </div>
                     );
