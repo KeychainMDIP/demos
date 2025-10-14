@@ -13,11 +13,17 @@ import UserBadge from "./UserBadge.js";
 
 function ViewAssetHistory({ asset }: { asset: any }) {
     const [history, setHistory] = useState([]);
+    const [editions, setEditions] = useState<number>(0);
 
     useEffect(() => {
         const fetchHistory = async () => {
             if (asset?.minted?.history) {
                 setHistory(asset.minted.history);
+                setEditions(asset.minted.editions);
+            } else if (asset?.token?.history) {
+                setHistory(asset.token.history);
+            } else {
+                setHistory([]);
             }
         };
 
@@ -37,6 +43,15 @@ function ViewAssetHistory({ asset }: { asset: any }) {
                 setMessage(`unknown record type ${record.type}`);
                 setTime(formatTime(record.time));
 
+                // Create edition link for reuse
+                const editionLink = editions > 0 && record.details ? (
+                    <>&nbsp;
+                        <a href={`/asset/${record.details.did}`}>
+                            #{record.details.edition} of {editions}
+                        </a>
+                    </>
+                ) : null;
+
                 if (record.type === 'mint') {
                     if (asset.minted) {
                         if (asset.minted.editions === 1) {
@@ -49,7 +64,7 @@ function ViewAssetHistory({ asset }: { asset: any }) {
                         else {
                             setMessage(
                                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                                    <UserBadge did={record.actor} />{`minted ${asset.minted.editions} editions.`}
+                                    <UserBadge did={record.actor} />{`minted ${editions} editions.`}
                                 </div>
                             );
                         }
@@ -57,7 +72,7 @@ function ViewAssetHistory({ asset }: { asset: any }) {
                     else {
                         setMessage(
                             <div style={{ display: 'flex', alignItems: 'center' }}>
-                                <UserBadge did={record.actor} />{"minted the token."}
+                                <UserBadge did={record.actor} />{"minted the edition."}
                             </div>
                         );
                     }
@@ -68,21 +83,14 @@ function ViewAssetHistory({ asset }: { asset: any }) {
                         setMessage(
                             <div style={{ display: 'flex', alignItems: 'center' }}>
                                 <UserBadge did={record.actor} />
-                                {`listed edition`}&nbsp;
-                                <a href={`/asset/${record.details.did}`}>
-                                    #{record.details.edition} of {asset.minted.editions}
-                                </a>&nbsp;
-                                {`for ${record.details.price} credits.`}
+                                {`listed edition`}{editionLink}&nbsp;{`for ${record.details.price} credits.`}
                             </div>
                         );
                     } else {
                         setMessage(
                             <div style={{ display: 'flex', alignItems: 'center' }}>
                                 <UserBadge did={record.actor} />
-                                {`delisted edition`}&nbsp;
-                                <a href={`/asset/${record.details.did}`}>
-                                    #{record.details.edition} of {asset.minted.editions}
-                                </a>.
+                                {`delisted edition`}{editionLink}.
                             </div>
                         );
                     }
@@ -92,11 +100,7 @@ function ViewAssetHistory({ asset }: { asset: any }) {
                     setMessage(
                         <div style={{ display: 'flex', alignItems: 'center' }}>
                             <UserBadge did={record.actor} />
-                            {`bought edition`}&nbsp;
-                            <a href={`/asset/${record.details.did}`}>
-                                #{record.details.edition} of {asset.minted.editions}
-                            </a>&nbsp;
-                            {`for ${record.details.price} credits.`}
+                            {`bought edition`}{editionLink}&nbsp;{`for ${record.details.price} credits.`}
                         </div>
                     );
                 }

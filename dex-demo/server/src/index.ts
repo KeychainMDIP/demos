@@ -655,8 +655,17 @@ app.get('/api/asset/:did', async (req: Request, res: Response) => {
         }
 
         if (asset.token?.matrix) {
-            const { matrix } = await keymaster.resolveAsset(asset.token.matrix);
+            const { matrix, minted } = await keymaster.resolveAsset(asset.token.matrix);
             asset.matrix = matrix;
+
+            if (minted.history && minted.history.length > 0) {
+                asset.token.history = minted.history.filter((record: any) => record.details?.did === req.params.did) || [];
+                // insert the first (mint) event
+                asset.token.history.unshift(minted.history[0]);
+            }
+            else {
+                asset.token.history = [];
+            }
         }
 
         if (asset.matrix) {
