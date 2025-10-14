@@ -45,10 +45,10 @@ function ViewAssetHistory({ asset }: { asset: any }) {
 
                 // Create edition link for reuse
                 const editionLink = editions > 0 && record.details ? (
-                    <>
+                    <>&nbsp;
                         <a href={`/asset/${record.details.did}`}>
                             #{record.details.edition} of {editions}
-                        </a>&nbsp;
+                        </a>
                     </>
                 ) : null;
 
@@ -72,7 +72,7 @@ function ViewAssetHistory({ asset }: { asset: any }) {
                     else {
                         setMessage(
                             <div style={{ display: 'flex', alignItems: 'center' }}>
-                                <UserBadge did={record.actor} />{"minted the token."}
+                                <UserBadge did={record.actor} />{"minted the edition."}
                             </div>
                         );
                     }
@@ -83,17 +83,14 @@ function ViewAssetHistory({ asset }: { asset: any }) {
                         setMessage(
                             <div style={{ display: 'flex', alignItems: 'center' }}>
                                 <UserBadge did={record.actor} />
-                                {`listed edition`}&nbsp;
-                                {editionLink}
-                                {`for ${record.details.price} credits.`}
+                                {`listed edition`}{editionLink}&nbsp;{`for ${record.details.price} credits.`}
                             </div>
                         );
                     } else {
                         setMessage(
                             <div style={{ display: 'flex', alignItems: 'center' }}>
                                 <UserBadge did={record.actor} />
-                                {`delisted edition`}&nbsp;
-                                {editionLink}
+                                {`delisted edition`}{editionLink}.
                             </div>
                         );
                     }
@@ -103,9 +100,7 @@ function ViewAssetHistory({ asset }: { asset: any }) {
                     setMessage(
                         <div style={{ display: 'flex', alignItems: 'center' }}>
                             <UserBadge did={record.actor} />
-                            {`bought edition`}&nbsp;
-                            {editionLink}
-                            {`for ${record.details.price} credits.`}
+                            {`bought edition`}{editionLink}&nbsp;{`for ${record.details.price} credits.`}
                         </div>
                     );
                 }
