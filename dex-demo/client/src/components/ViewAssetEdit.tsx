@@ -59,6 +59,21 @@ function ViewAssetEdit({ asset, onSave }: { asset: any, onSave: () => void }) {
         }
     }
 
+    async function moveAsset() {
+        try {
+            const collection = collections.find(c => c.name === newCollection)?.did;
+            if (!collection) {
+                showSnackbar("Invalid collection selected", 'error');
+                return;
+            }
+            await api.post(`/asset/${did}/move`, { collection });
+            onSave();
+        }
+        catch (error: any) {
+            showSnackbar("Failed to move asset", 'error');
+        }
+    }
+
     return (
         <TableContainer>
             <Table>
@@ -113,7 +128,7 @@ function ViewAssetEdit({ asset, onSave }: { asset: any, onSave: () => void }) {
                                 <Button
                                     variant="contained"
                                     color="primary"
-                                    onClick={saveTitle}
+                                    onClick={moveAsset}
                                     disabled={newCollection === currentCollection}
                                 >
                                     Move

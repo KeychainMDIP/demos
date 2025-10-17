@@ -806,6 +806,49 @@ app.patch('/api/asset/:did', isAuthenticated, async (req: Request, res: Response
     }
 });
 
+app.post('/api/asset/:did/move', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+        const did = req.params.did;
+        const { collection } = req.body;
+        const { matrix } = await keymaster.resolveAsset(did);
+        if (!matrix) {
+            res.status(400).send("Only matrix assets can be moved to a collection");
+            return;
+        }
+
+        const { collection: currentCollection } = await keymaster.resolveAsset(matrix.collection);
+        if (!currentCollection) {
+            res.status(400).send("Invalid collection");
+            return;
+        }
+
+        const { collection: newCollection } = await keymaster.resolveAsset(collection);
+        if (!newCollection) {
+            res.status(400).send("Invalid collection");
+            return;
+        }
+
+        // Remove did from current collection and add to new collection
+        currentCollection.assets = currentCollection.assets.filter((assetDid: string) => assetDid !== did);
+        newCollection.assets.push(did);
+
+        await keymaster.updateAsset(matrix.collection, { collection: currentCollection });
+        await keymaster.updateAsset(collection, { collection: newCollection });
+
+        // Update asset's matrix collection reference
+        await keymaster.updateAsset(did, {
+            matrix: {
+                ...matrix,
+                collection,
+            }
+        });
+
+        res.json({ ok: true, message: 'Asset moved successfully' });
+    } catch (error: any) {
+        res.status(500).send("Failed to update asset");
+    }
+});
+
 app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Response) => {
     try {
         const did = req.params.did;
