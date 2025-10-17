@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useSnackbar } from "../contexts/SnackbarContext.js";
 import { useApi } from "../contexts/ApiContext.js";
 import {
@@ -15,13 +15,30 @@ import {
 
 function ViewAssetEdit({ asset, onSave }: { asset: any, onSave: () => void }) {
     const { did } = useParams();
+    const navigate = useNavigate();
     const api = useApi();
     const { showSnackbar } = useSnackbar();
     const [newTitle, setNewTitle] = useState<string>("");
     const [currentTitle, setCurrentTitle] = useState<string>("");
+    const [collections, setCollections] = useState<any[]>([]);
+    const [currentCollection, setCurrentCollection] = useState<string>("");
+    const [newCollection, setNewCollection] = useState<string>("");
 
     useEffect(() => {
         const init = async () => {
+            try {
+                const getProfile = await api.get(`/profile/${asset.owner.did}`);
+                const { collections } = getProfile.data;
+
+                setCollections(collections);
+                setCurrentCollection(asset.collection.name);
+                setNewCollection(asset.collection.name);
+            }
+            catch (error: any) {
+                showSnackbar("Failed to load profile data", 'error');
+                navigate('/');
+            }
+
             setCurrentTitle(asset.title || "");
             setNewTitle(asset.title || "");
         };
@@ -48,39 +65,61 @@ function ViewAssetEdit({ asset, onSave }: { asset: any, onSave: () => void }) {
                 <TableBody>
                     <TableRow>
                         <TableCell>Title</TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                            <TextField
-                                label=""
-                                value={newTitle}
-                                onChange={(e) => setNewTitle(e.target.value)}
-                                slotProps={{
-                                    htmlInput: {
-                                        maxLength: 20,
-                                    },
-                                }}
-                                sx={{ width: 300 }}
-                                margin="normal"
-                                fullWidth
-                            />
-                            <Button
-                                variant="contained"
-                                color="primary"
-                                onClick={saveTitle}
-                                disabled={newTitle === currentTitle}
-                            >
-                                Save
-                            </Button>
-                        </Box>
+                        <TableCell>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                                <TextField
+                                    label=""
+                                    value={newTitle}
+                                    onChange={(e) => setNewTitle(e.target.value)}
+                                    slotProps={{
+                                        htmlInput: {
+                                            maxLength: 20,
+                                        },
+                                    }}
+                                    sx={{ width: 300 }}
+                                    margin="normal"
+                                    fullWidth
+                                />
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    onClick={saveTitle}
+                                    disabled={newTitle === currentTitle}
+                                >
+                                    Save
+                                </Button>
+                            </Box>
+                        </TableCell>
                     </TableRow>
                     <TableRow>
                         <TableCell>Collection</TableCell>
-                        {asset.collection?.name ? (
-                            <TableCell>
-                                <a href={`/collection/${asset.collection.did}`}>{asset.collection.name}</a>
-                            </TableCell>
-                        ) : (
-                            <TableCell>no collection</TableCell>
-                        )}
+                        <TableCell>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                                <TextField
+                                    select
+                                    value={newCollection}
+                                    onChange={(e) => setNewCollection(e.target.value)}
+                                    SelectProps={{
+                                        native: true,
+                                    }}
+                                    sx={{ width: 300 }}
+                                >
+                                    {collections.map((collection) => (
+                                        <option key={collection.did} value={collection.name}>
+                                            {collection.name}
+                                        </option>
+                                    ))}
+                                </TextField>
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    onClick={saveTitle}
+                                    disabled={newCollection === currentCollection}
+                                >
+                                    Move
+                                </Button>
+                            </Box>
+                        </TableCell>
                     </TableRow>
                 </TableBody>
             </Table>
