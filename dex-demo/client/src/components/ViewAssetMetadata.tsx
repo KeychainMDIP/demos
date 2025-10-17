@@ -1,34 +1,23 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useSnackbar } from "../contexts/SnackbarContext.js";
-import { useAuth } from "../contexts/AuthContext.js";
-import { useApi } from "../contexts/ApiContext.js";
 import {
-    Box,
     Button,
     Table,
     TableBody,
     TableContainer,
     TableCell,
     TableRow,
-    TextField,
 } from "@mui/material";
 import { formatDate } from "../utils.js";
 import UserBadge from "./UserBadge.js";
 
-function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }) {
+function ViewAssetMetadata({ asset }: { asset: any }) {
     const { did } = useParams();
     const navigate = useNavigate();
-    const auth = useAuth();
-    const api = useApi();
-    const { showSnackbar } = useSnackbar();
-    const [newTitle, setNewTitle] = useState<string>("");
-    const [currentTitle, setCurrentTitle] = useState<string>("");
     const [firstDid, setFirstDid] = useState<string | null>(null);
     const [prevDid, setPrevDid] = useState<string | null>(null);
     const [nextDid, setNextDid] = useState<string | null>(null);
     const [lastDid, setLastDid] = useState<string | null>(null);
-    const [isEditable, setIsEditable] = useState<boolean>(false);
 
     function findAdjacentDids() {
         const list = asset.collection?.assets || [];
@@ -73,28 +62,10 @@ function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }
             setPrevDid(prevDid);
             setNextDid(nextDid);
             setLastDid(lastDid);
-
-            setCurrentTitle(asset.title || "");
-            setNewTitle(asset.title || "");
-
-            setIsEditable(auth.isAuthenticated && auth.userDID === asset.matrix?.owner && !asset.minted && !asset.token);
         };
 
         init();
     }, [asset]);
-
-    async function saveTitle() {
-        try {
-            const title = newTitle.trim();
-            await api.patch(`/asset/${did}`, { title });
-            setNewTitle(title);
-            setCurrentTitle(title);
-            onSave();
-        }
-        catch (error: any) {
-            showSnackbar("Failed to set profile name", 'error');
-        }
-    }
 
     return (
         <TableContainer>
@@ -102,31 +73,7 @@ function ViewAssetMetadata({ asset, onSave }: { asset: any, onSave: () => void }
                 <TableBody>
                     <TableRow>
                         <TableCell>Title</TableCell>
-                        {isEditable ? (
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                                <TextField
-                                    label=""
-                                    value={newTitle}
-                                    onChange={(e) => setNewTitle(e.target.value)}
-                                    slotProps={{
-                                        htmlInput: {
-                                            maxLength: 20,
-                                        },
-                                    }}
-                                    sx={{ width: 300 }}
-                                    margin="normal"
-                                    fullWidth
-                                />
-                                <Button
-                                    variant="contained"
-                                    color="primary"
-                                    onClick={saveTitle}
-                                    disabled={newTitle === currentTitle}
-                                >
-                                    Save
-                                </Button>
-                            </Box>
-                        ) : asset.token?.matrix ? (
+                        {asset.token?.matrix ? (
                             <TableCell><a href={`/asset/${asset.token?.matrix}`}>{asset.title || 'no title'}</a></TableCell>
                         ) : (
                             <TableCell>{asset.title || 'no title'}</TableCell>

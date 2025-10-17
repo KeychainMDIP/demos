@@ -12,6 +12,7 @@ import {
 
 import ViewAssetMetadata from "./ViewAssetMetadata.js";
 import ViewAssetPfp from "./ViewAssetPfp.js";
+import ViewAssetEdit from "./ViewAssetEdit.js";
 import ViewAssetMint from "./ViewAssetMint.js";
 import ViewAssetToken from "./ViewAssetToken.js";
 import ViewAssetHistory from "./ViewAssetHistory.js";
@@ -26,6 +27,7 @@ function ViewAsset() {
     const { showSnackbar } = useSnackbar();
 
     const [asset, setAsset] = useState<any>(null);
+    const [isEditable, setIsEditable] = useState<boolean>(false);
     const [tab, setTab] = useState<string>("metadata");
 
     const fetchAsset = useCallback(async () => {
@@ -40,6 +42,7 @@ function ViewAsset() {
             const asset = getAsset.data.asset;
 
             setAsset(asset);
+            setIsEditable(auth.isAuthenticated && auth.userDID === asset.matrix?.owner && !asset.minted && !asset.token);
         }
         catch (error: any) {
             showSnackbar("Failed to load asset data", 'error');
@@ -85,7 +88,10 @@ function ViewAsset() {
                         scrollButtons="auto"
                     >
                         <Tab key="metadata" value="metadata" label={'Metadata'} />
-                        {!asset.minted && !asset.token && auth.isAuthenticated && asset.matrix?.owner === auth.userDID &&
+                        {isEditable &&
+                            <Tab key="edit" value="edit" label={'Edit'} />
+                        }
+                        {isEditable &&
                             <Tab key="mint" value="mint" label={'Mint'} />
                         }
                         {asset.minted &&
@@ -102,7 +108,10 @@ function ViewAsset() {
                         }
                     </Tabs>
                     {tab === 'metadata' &&
-                        <ViewAssetMetadata asset={asset} onSave={fetchAsset} />
+                        <ViewAssetMetadata asset={asset} />
+                    }
+                    {tab === 'edit' &&
+                        <ViewAssetEdit asset={asset} onSave={fetchAsset} />
                     }
                     {tab === 'mint' &&
                         <ViewAssetMint asset={asset} onMint={mintAsset} />
