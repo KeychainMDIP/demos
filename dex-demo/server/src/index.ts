@@ -845,7 +845,7 @@ app.post('/api/asset/:did/move', isAuthenticated, async (req: Request, res: Resp
 
         res.json({ ok: true, message: 'Asset moved successfully' });
     } catch (error: any) {
-        res.status(500).send("Failed to update asset");
+        res.status(500).send("Failed to move asset");
     }
 });
 

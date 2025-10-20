@@ -55,7 +55,7 @@ function ViewAssetEdit({ asset, onSave }: { asset: any, onSave: () => void }) {
             onSave();
         }
         catch (error: any) {
-            showSnackbar("Failed to set profile name", 'error');
+            showSnackbar("Failed to set asset title", 'error');
         }
     }
 
