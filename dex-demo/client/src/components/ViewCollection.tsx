@@ -13,7 +13,7 @@ function ViewCollection() {
     const navigate = useNavigate();
     const auth = useAuth();
     const api = useApi();
-    const { showSnackbar } = useSnackbar();
+    const { showSnackbar, showSnackbarError } = useSnackbar();
 
     const [collection, setCollection] = useState<any>(null);
     const [credits, setCredits] = useState<number>(0);
@@ -60,12 +60,6 @@ function ViewCollection() {
 
     if (!collection) {
         return <></>;
-    }
-
-    function showSnackbarError(error: any, defaultMessage: string) {
-        const errorData = error.response?.data;
-        const errorMessage = typeof errorData === 'string' ? errorData : errorData?.message;
-        showSnackbar(errorMessage || defaultMessage, 'error');
     }
 
     async function addAsset() {
