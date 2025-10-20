@@ -1487,7 +1487,9 @@ app.post('/api/collection/:did/sort', isAuthenticated, async (req: Request, res:
 
         if (sortBy === 'title') {
             resolvedAssets.sort((a: any, b: any) => {
-                return a.didDocumentData.title.localeCompare(b.didDocumentData.title);
+                const titleA = a.didDocumentData.title ?? "";
+                const titleB = b.didDocumentData.title ?? "";
+                return titleA.localeCompare(titleB);
             });
         } else if (sortBy === 'created') {
             resolvedAssets.sort((a: any, b: any) => {
