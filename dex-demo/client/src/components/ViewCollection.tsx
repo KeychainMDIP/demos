@@ -49,7 +49,7 @@ function ViewCollection() {
             setBudget(budget);
         }
         catch (error: any) {
-            showSnackbar("Failed to load collection data", 'error');
+            showSnackbarError(error, "Failed to load collection data");
             navigate('/');
         }
     }
