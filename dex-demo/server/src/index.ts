@@ -1308,6 +1308,11 @@ app.post('/api/collection/:did/add', isAuthenticated, async (req: Request, res: 
             return;
         }
 
+        if (collection.assets.includes(asset)) {
+            res.status(400).send("Asset already in collection");
+            return;
+        }
+
         const clone = await keymaster.cloneAsset(asset);
 
         if (!clone) {
