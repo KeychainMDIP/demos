@@ -1473,17 +1473,16 @@ app.post('/api/collection/:did/sort', isAuthenticated, async (req: Request, res:
         const assetDIDs = collection.assets || [];
 
         // Resolve each asset and add to array
-        const resolvedAssets = [];
-        for (const assetDid of assetDIDs) {
-            try {
-                const docs = await keymaster.resolveDID(assetDid);
-                if (docs) {
-                    resolvedAssets.push(docs);
-                }
-            } catch (e) {
-                console.log(`Failed to resolve asset ${assetDid}: ${e}`);
-            }
-        }
+        // Resolve all assets in parallel
+        const assetPromises = assetDIDs.map(assetDid =>
+            keymaster.resolveDID(assetDid)
+                .catch(e => {
+                    console.log(`Failed to resolve asset ${assetDid}: ${e}`);
+                    return undefined;
+                })
+        );
+        const assetResults = await Promise.all(assetPromises);
+        const resolvedAssets = assetResults.filter(docs => docs);
 
         if (sortBy === 'title') {
             resolvedAssets.sort((a: any, b: any) => {
