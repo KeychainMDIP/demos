@@ -123,6 +123,7 @@ function ViewCollection() {
 
                 await api.post(`/collection/${did}/sort`, { sortBy });
                 await fetchCollection();
+                showSnackbar('Assets sorted successfully.', 'success');
             }
         } catch (error: any) {
             showSnackbarError(error, 'Failed to sort assets');
