@@ -62,6 +62,12 @@ function ViewCollection() {
         return <></>;
     }
 
+    function showSnackbarError(error: any, defaultMessage: string) {
+        const errorData = error.response?.data;
+        const errorMessage = typeof errorData === 'string' ? errorData : errorData?.message;
+        showSnackbar(errorMessage || defaultMessage, 'error');
+    }
+
     async function addAsset() {
         try {
             const input = window.prompt("Image DID:");
@@ -72,8 +78,7 @@ function ViewCollection() {
                 await fetchCollection();
             }
         } catch (error: any) {
-            const errorMessage = error.response?.data || 'Failed to add asset';
-            showSnackbar(errorMessage, 'error');
+            showSnackbarError(error, 'Failed to add asset');
         }
     }
 
@@ -87,8 +92,7 @@ function ViewCollection() {
                 fetchCollection();
             }
         } catch (error: any) {
-            const errorMessage = error.response?.data || 'Failed to rename collection';
-            showSnackbar(errorMessage, 'error');
+            showSnackbarError(error, 'Failed to rename collection');
         }
     }
 
@@ -108,8 +112,26 @@ function ViewCollection() {
                 fetchCollection();
             }
         } catch (error: any) {
-            const errorMessage = error.response?.data || 'Failed to rename assets';
-            showSnackbar(errorMessage, 'error');
+            showSnackbarError(error, 'Failed to rename assets');
+        }
+    }
+
+    async function sortAssets() {
+        try {
+            const input = window.prompt("Sort assets by (title/created):", "title");
+
+            if (input) {
+                const sortBy = input.trim().toLowerCase();
+                if (sortBy !== 'title' && sortBy !== 'created') {
+                    showSnackbar('Invalid sort option. Please enter "title" or "created".', 'error');
+                    return;
+                }
+
+                await api.post(`/collection/${did}/sort`, { sortBy });
+                await fetchCollection();
+            }
+        } catch (error: any) {
+            showSnackbarError(error, 'Failed to sort assets');
         }
     }
 
@@ -121,8 +143,7 @@ function ViewCollection() {
                 navigate(`/profile/${auth.userDID}`);
             }
         } catch (error: any) {
-            const errorMessage = error.response?.data || 'Failed to remove collection';
-            showSnackbar(errorMessage, 'error');
+            showSnackbarError(error, 'Failed to remove collection');
         }
     }
 
@@ -286,6 +307,9 @@ function ViewCollection() {
                         </Button>
                         <Button variant="contained" color="primary" onClick={renameAssets}>
                             Rename assets...
+                        </Button>
+                        <Button variant="contained" color="primary" onClick={sortAssets}>
+                            Sort assets...
                         </Button>
                         <Button variant="contained" color="primary" onClick={removeCollection}>
                             Remove collection...
