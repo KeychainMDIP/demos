@@ -1472,9 +1472,8 @@ app.post('/api/collection/:did/sort', isAuthenticated, async (req: Request, res:
 
         const assetDIDs = collection.assets || [];
 
-        // Resolve each asset and add to array
         // Resolve all assets in parallel
-        const assetPromises = assetDIDs.map(assetDid =>
+        const assetPromises = assetDIDs.map((assetDid: string) =>
             keymaster.resolveDID(assetDid)
                 .catch(e => {
                     console.log(`Failed to resolve asset ${assetDid}: ${e}`);
