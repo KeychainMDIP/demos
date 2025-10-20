@@ -71,8 +71,9 @@ function ViewCollection() {
                 await api.post(`/collection/${did}/add`, { asset });
                 await fetchCollection();
             }
-        } catch (error) {
-            showSnackbar('Failed to add asset', 'error');
+        } catch (error: any) {
+            const errorMessage = error.response?.data || 'Failed to add asset';
+            showSnackbar(errorMessage, 'error');
         }
     }
 
@@ -85,8 +86,9 @@ function ViewCollection() {
                 await api.patch(`/collection/${did}`, { name });
                 fetchCollection();
             }
-        } catch (error) {
-            showSnackbar('Failed to rename collection', 'error');
+        } catch (error: any) {
+            const errorMessage = error.response?.data || 'Failed to rename collection';
+            showSnackbar(errorMessage, 'error');
         }
     }
 
@@ -105,8 +107,9 @@ function ViewCollection() {
 
                 fetchCollection();
             }
-        } catch (error) {
-            showSnackbar('Failed to rename assets', 'error');
+        } catch (error: any) {
+            const errorMessage = error.response?.data || 'Failed to rename assets';
+            showSnackbar(errorMessage, 'error');
         }
     }
 
@@ -117,8 +120,9 @@ function ViewCollection() {
                 await api.delete(`/collection/${did}`);
                 navigate(`/profile/${auth.userDID}`);
             }
-        } catch (error) {
-            showSnackbar('Failed to remove collection', 'error');
+        } catch (error: any) {
+            const errorMessage = error.response?.data || 'Failed to remove collection';
+            showSnackbar(errorMessage, 'error');
         }
     }
 
@@ -266,8 +270,8 @@ function ViewCollection() {
         <>
             <Box sx={{ width: '100%', p: 3 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography sx={{ fontSize: '2.0em'}}>{collection.name} by</Typography>
-                    <UserBadge did={collection.owner.did} fontSize={'2.0em'} imgSize={'50px'}/>
+                    <Typography sx={{ fontSize: '2.0em' }}>{collection.name} by</Typography>
+                    <UserBadge did={collection.owner.did} fontSize={'2.0em'} imgSize={'50px'} />
                 </Box>
                 {auth.userDID === collection.owner.did &&
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
