@@ -10,6 +10,7 @@ interface SnackbarState {
 
 interface SnackbarContextType {
     showSnackbar: (message: string, severity: AlertColor, autoHideDuration?: number | null) => void;
+    showSnackbarError: (error: any, defaultMessage: string) => void;
 }
 
 const SnackbarContext = createContext<SnackbarContextType | undefined>(undefined);
@@ -37,9 +38,17 @@ export const SnackbarProvider: React.FC<{ children: ReactNode }> = ({ children }
         setSnackbar((prev) => ({ ...prev, open: false }));
     }, []);
 
+
+    const showSnackbarErrorInstance = useCallback((error: any, defaultMessage: string) => {
+        const errorData = error?.response?.data;
+        const errorMessage = typeof errorData === 'string' ? errorData : errorData?.message;
+        showSnackbarInstance(errorMessage || defaultMessage, 'error');
+    }, [showSnackbarInstance]);
+
     const contextValue = useMemo(() => ({
-        showSnackbar: showSnackbarInstance
-    }), [showSnackbarInstance]);
+        showSnackbar: showSnackbarInstance,
+        showSnackbarError: showSnackbarErrorInstance
+    }), [showSnackbarInstance, showSnackbarErrorInstance]);
 
     return (
         <SnackbarContext.Provider value={contextValue}>

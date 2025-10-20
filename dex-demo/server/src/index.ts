@@ -1447,6 +1447,68 @@ app.post('/api/collection/:did/upload', isAuthenticated, upload.array('images', 
     }
 });
 
+app.post('/api/collection/:did/sort', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+        const { did } = req.params;
+        const { sortBy } = req.body;
+        const data = await keymaster.resolveAsset(did);
+
+        if (!data) {
+            res.status(404).send("Collection not found");
+            return;
+        }
+
+        const collection = data.collection;
+
+        if (!collection) {
+            res.status(400).send("Not a collection");
+            return;
+        }
+
+        if (collection.owner !== req.session.user?.did) {
+            res.status(403).send("You do not own this collection");
+            return;
+        }
+
+        const assetDIDs = collection.assets || [];
+
+        // Resolve all assets in parallel
+        const assetPromises = assetDIDs.map((assetDid: string) =>
+            keymaster.resolveDID(assetDid)
+                .catch(e => {
+                    console.log(`Failed to resolve asset ${assetDid}: ${e}`);
+                    return undefined;
+                })
+        );
+        const assetResults = await Promise.all(assetPromises);
+        const resolvedAssets = assetResults.filter(docs => docs);
+
+        if (sortBy === 'title') {
+            resolvedAssets.sort((a: any, b: any) => {
+                const titleA = a.didDocumentData.title ?? "";
+                const titleB = b.didDocumentData.title ?? "";
+                return titleA.localeCompare(titleB);
+            });
+        } else if (sortBy === 'created') {
+            resolvedAssets.sort((a: any, b: any) => {
+                const dateA = new Date(a.didDocumentMetadata.created);
+                const dateB = new Date(b.didDocumentMetadata.created);
+                return dateA.getTime() - dateB.getTime();
+            });
+        } else {
+            res.status(400).send("Invalid sortBy value");
+            return;
+        }
+
+        collection.assets = resolvedAssets.map((asset: any) => asset.didDocument.id);
+        await keymaster.updateAsset(did, { collection });
+
+        res.json({ ok: true, message: `Assets sorted by ${sortBy}` });
+    } catch (error: any) {
+        res.status(500).send("Could not sort assets in collection");
+    }
+});
+
 app.get('/api/users', isAdmin, async (_: Request, res: Response) => {
     try {
         const currentDb = await db.loadDb();
