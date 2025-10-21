@@ -849,6 +849,14 @@ app.post('/api/asset/:did/move', isAuthenticated, async (req: Request, res: Resp
     }
 });
 
+function mintingFee(editions: number, asset: any): number {
+    const fileSize = asset.image?.bytes || 0;
+    const storageFee = Math.ceil(fileSize * DexRates.storageRate);
+    const tokenFee = editions * DexRates.editionRate;
+
+    return storageFee + tokenFee;
+}
+
 app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Response) => {
     try {
         const did = req.params.did;
@@ -897,10 +905,7 @@ app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Resp
             return;
         }
 
-        const fileSize = asset.image?.bytes || 0;
-        const storageFee = Math.ceil(fileSize * DexRates.storageRate);
-        const mintingFee = editions * DexRates.editionRate;
-        const totalFee = storageFee + mintingFee;
+        const totalFee = mintingFee(editions, asset);
 
         if ((user.credits || 0) < totalFee) {
             res.status(403).send("Insufficient credits");
@@ -984,11 +989,18 @@ app.post('/api/asset/:did/unmint', isAuthenticated, async (req: Request, res: Re
             }
         }
 
+        // Return credits for minting fee
+        const currentDb = await db.loadDb();
+        const users = currentDb.users || {};
+        const user = users[owner];
+        const totalFee = mintingFee(asset.minted.editions, asset);
+
+        user.credits = (user.credits || 0) + totalFee;
+        db.writeDb(currentDb);
+
         await keymaster.updateAsset(did, { minted: null });
 
-        // TBD return credits?
-
-        res.json({ ok: true, message: 'Asset unminted successfully' });
+        res.json({ ok: true, message: `${totalFee} credits returned for unminting`, rebate: totalFee });
     } catch (error: any) {
         res.status(500).send("Failed to update asset");
     }

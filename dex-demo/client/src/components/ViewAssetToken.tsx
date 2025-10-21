@@ -55,7 +55,9 @@ function ViewAssetToken({ asset, onUnmint }: { asset: any, onUnmint: () => void 
 
     async function unmintAsset() {
         try {
-            await api.post(`/asset/${did}/unmint`);
+            const getUnmint = await api.post(`/asset/${did}/unmint`);
+            const { message } = getUnmint.data;
+            showSnackbar(message || "Unminting successful", 'success');
             onUnmint();
         } catch (error) {
             showSnackbarError(error, "Failed to unmint asset");
