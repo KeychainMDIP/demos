@@ -56,7 +56,7 @@ function ViewAsset() {
         if (!auth.loading && did) {
             fetchAsset();
         }
-    }, [did, auth.loading]);
+    }, [did, auth.loading, fetchAsset]);
 
     if (!asset || !asset.image) {
         return <></>;
