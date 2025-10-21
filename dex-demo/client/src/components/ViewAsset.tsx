@@ -40,30 +40,36 @@ function ViewAsset() {
         try {
             const getAsset = await api.get(`/asset/${did}`);
             const asset = getAsset.data.asset;
+            const owner = asset.matrix?.owner;
+            const isEditable = auth.isAuthenticated && auth.userDID === owner && !asset.minted && !asset.token;
 
             setAsset(asset);
-            setIsEditable(auth.isAuthenticated && auth.userDID === asset.matrix?.owner && !asset.minted && !asset.token);
+            setIsEditable(isEditable);
         }
         catch (error: any) {
             showSnackbar("Failed to load asset data", 'error');
             navigate('/');
         }
-    }, [api, did, navigate, showSnackbar]);
+    }, [api, auth, did, navigate, showSnackbar]);
 
     useEffect(() => {
-        fetchAsset();
-    }, [did]);
+        if (!auth.loading && did) {
+            fetchAsset();
+        }
+    }, [did, auth.loading, fetchAsset]);
 
     if (!asset || !asset.image) {
         return <></>;
     }
 
     async function mintAsset() {
+        auth.refreshAuth();
         await fetchAsset();
         setTab('token');
     }
 
     async function unmintAsset() {
+        auth.refreshAuth();
         await fetchAsset();
         setTab('mint');
     }

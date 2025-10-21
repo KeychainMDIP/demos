@@ -20,7 +20,7 @@ function ViewAssetToken({ asset, onUnmint }: { asset: any, onUnmint: () => void 
     const navigate = useNavigate();
     const auth = useAuth();
     const api = useApi();
-    const { showSnackbar } = useSnackbar();
+    const { showSnackbar, showSnackbarError } = useSnackbar();
 
     const [licenseLink, setLicenseLink] = useState<string>("");
     const [showUnmint, setShowUnmint] = useState<boolean>(false);
@@ -55,10 +55,12 @@ function ViewAssetToken({ asset, onUnmint }: { asset: any, onUnmint: () => void 
 
     async function unmintAsset() {
         try {
-            await api.post(`/asset/${did}/unmint`);
+            const getUnmint = await api.post(`/asset/${did}/unmint`);
+            const { message } = getUnmint.data;
+            showSnackbar(message || "Unminting successful", 'success');
             onUnmint();
         } catch (error) {
-            showSnackbar("Failed to unmint asset", 'error');
+            showSnackbarError(error, "Failed to unmint asset");
         }
     }
 

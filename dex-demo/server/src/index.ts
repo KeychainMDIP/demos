@@ -33,7 +33,7 @@ const GATEKEEPER_URL = process.env.DEX_GATEKEEPER_URL || 'http://localhost:4224'
 const WALLET_URL = process.env.DEX_WALLET_URL || 'http://localhost:4224';
 const OWNER_DID = process.env.DEX_OWNER_DID;
 const DEMO_NAME = process.env.DEX_DEMO_NAME || 'dex-demo';
-const DATABASE_TYPE = process.env.DEX_DATABASE_TYPE || 'json'; // 'json' or
+const DATABASE_TYPE = process.env.DEX_DATABASE_TYPE || 'json';
 let DEMO_DID: string;
 
 const app = express();
@@ -849,6 +849,14 @@ app.post('/api/asset/:did/move', isAuthenticated, async (req: Request, res: Resp
     }
 });
 
+function mintingFee(editions: number, asset: any): number {
+    const fileSize = asset.image?.bytes || 0;
+    const storageFee = Math.ceil(fileSize * DexRates.storageRate);
+    const tokenFee = editions * DexRates.editionRate;
+
+    return storageFee + tokenFee;
+}
+
 app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Response) => {
     try {
         const did = req.params.did;
@@ -897,10 +905,7 @@ app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Resp
             return;
         }
 
-        const fileSize = asset.image?.bytes || 0;
-        const storageFee = Math.ceil(fileSize * DexRates.storageRate);
-        const mintingFee = editions * DexRates.editionRate;
-        const totalFee = storageFee + mintingFee;
+        const totalFee = mintingFee(editions, asset);
 
         if ((user.credits || 0) < totalFee) {
             res.status(403).send("Insufficient credits");
@@ -942,7 +947,7 @@ app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Resp
         user.credits = (user.credits || 0) - totalFee;
         db.writeDb(currentDb);
 
-        res.json({ ok: true, message: 'Asset minted successfully' });
+        res.json({ ok: true, message: `${editions} tokens minted for ${totalFee} credits`, cost: totalFee });
     } catch (error: any) {
         res.status(500).send("Failed to update asset");
     }
@@ -970,13 +975,12 @@ app.post('/api/asset/:did/unmint', isAuthenticated, async (req: Request, res: Re
             return;
         }
 
-        // All tokens must be owned by the asset owner or the exchange
+        // All tokens must be owned by the asset owner
         for (const did of asset.minted.tokens) {
             try {
-                const docs = await keymaster.resolveDID(did);
-                const tokenOwner = docs?.didDocument?.controller;
+                const { token } = await keymaster.resolveAsset(did);
 
-                if (tokenOwner !== owner && tokenOwner !== DEMO_DID) {
+                if (!token || token.owner !== owner) {
                     res.status(400).send("All tokens must be owned by the asset owner to unmint");
                     return;
                 }
@@ -985,11 +989,18 @@ app.post('/api/asset/:did/unmint', isAuthenticated, async (req: Request, res: Re
             }
         }
 
+        // Return credits for minting fee
+        const currentDb = await db.loadDb();
+        const users = currentDb.users || {};
+        const user = users[owner];
+        const totalFee = mintingFee(asset.minted.editions, asset);
+
+        user.credits = (user.credits || 0) + totalFee;
+        db.writeDb(currentDb);
+
         await keymaster.updateAsset(did, { minted: null });
 
-        // TBD return credits?
-
-        res.json({ ok: true, message: 'Asset unminted successfully' });
+        res.json({ ok: true, message: `${totalFee} credits returned for unminting`, rebate: totalFee });
     } catch (error: any) {
         res.status(500).send("Failed to update asset");
     }

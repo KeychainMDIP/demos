@@ -19,7 +19,7 @@ function ViewAssetMint({ asset, onMint }: { asset: any, onMint: () => void }) {
     const { did } = useParams();
     const auth = useAuth();
     const api = useApi();
-    const { showSnackbar } = useSnackbar();
+    const { showSnackbar, showSnackbarError } = useSnackbar();
 
     const [fileSize, setFileSize] = useState<number>(0);
     const [editions, setEditions] = useState<number>(1);
@@ -115,10 +115,12 @@ function ViewAssetMint({ asset, onMint }: { asset: any, onMint: () => void }) {
         setDisableMint(true);
 
         try {
-            await api.post(`/asset/${did}/mint`, { editions, royalty, license });
+            const getMint = await api.post(`/asset/${did}/mint`, { editions, royalty, license });
+            const { message } = getMint.data;
+            showSnackbar(message, 'success');
             onMint();
         } catch (error) {
-            showSnackbar("Failed to mint asset", 'error');
+            showSnackbarError(error, "Failed to mint asset");
         }
     }
 
