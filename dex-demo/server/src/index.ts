@@ -33,7 +33,7 @@ const GATEKEEPER_URL = process.env.DEX_GATEKEEPER_URL || 'http://localhost:4224'
 const WALLET_URL = process.env.DEX_WALLET_URL || 'http://localhost:4224';
 const OWNER_DID = process.env.DEX_OWNER_DID;
 const DEMO_NAME = process.env.DEX_DEMO_NAME || 'dex-demo';
-const DATABASE_TYPE = process.env.DEX_DATABASE_TYPE || 'json'; // 'json' or
+const DATABASE_TYPE = process.env.DEX_DATABASE_TYPE || 'json';
 let DEMO_DID: string;
 
 const app = express();
@@ -942,7 +942,7 @@ app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Resp
         user.credits = (user.credits || 0) - totalFee;
         db.writeDb(currentDb);
 
-        res.json({ ok: true, message: 'Asset minted successfully' });
+        res.json({ ok: true, message: `${editions} tokens minted for ${totalFee} credits`, cost: totalFee });
     } catch (error: any) {
         res.status(500).send("Failed to update asset");
     }
@@ -970,13 +970,12 @@ app.post('/api/asset/:did/unmint', isAuthenticated, async (req: Request, res: Re
             return;
         }
 
-        // All tokens must be owned by the asset owner or the exchange
+        // All tokens must be owned by the asset owner
         for (const did of asset.minted.tokens) {
             try {
-                const docs = await keymaster.resolveDID(did);
-                const tokenOwner = docs?.didDocument?.controller;
+                const { token } = await keymaster.resolveAsset(did);
 
-                if (tokenOwner !== owner && tokenOwner !== DEMO_DID) {
+                if (!token || token.owner !== owner) {
                     res.status(400).send("All tokens must be owned by the asset owner to unmint");
                     return;
                 }

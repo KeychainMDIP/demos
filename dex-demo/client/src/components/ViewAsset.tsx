@@ -59,11 +59,13 @@ function ViewAsset() {
     }
 
     async function mintAsset() {
+        auth.refreshAuth();
         await fetchAsset();
         setTab('token');
     }
 
     async function unmintAsset() {
+        auth.refreshAuth();
         await fetchAsset();
         setTab('mint');
     }
