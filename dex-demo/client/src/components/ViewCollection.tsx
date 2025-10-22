@@ -142,6 +142,26 @@ function ViewCollection() {
         }
     }
 
+    async function publishCollection() {
+        try {
+            await api.patch(`/collection/${did}`, { published: true });
+            showSnackbar('Collection published successfully.', 'success');
+            fetchCollection();
+        } catch (error: any) {
+            showSnackbarError(error, 'Failed to publish collection');
+        }
+    }
+
+    async function unpublishCollection() {
+        try {
+            await api.patch(`/collection/${did}`, { published: false });
+            showSnackbar('Collection unpublished successfully.', 'success');
+            fetchCollection();
+        } catch (error: any) {
+            showSnackbarError(error, 'Failed to unpublish collection');
+        }
+    }
+
     async function uploadAssets() {
         if (credits === 0) {
             showSnackbar('You have no credits to upload images. Please add credits first.', 'error');
@@ -309,6 +329,15 @@ function ViewCollection() {
                         <Button variant="contained" color="primary" onClick={removeCollection}>
                             Remove collection...
                         </Button>
+                        {collection.published ?
+                            <Button variant="contained" color="primary" onClick={unpublishCollection}>
+                                Unpublish collection
+                            </Button>
+                            :
+                            <Button variant="contained" color="primary" onClick={publishCollection}>
+                                Publish collection
+                            </Button>
+                        }
                     </Box>
                 }
                 <AssetGrid assets={collection.assets} />
