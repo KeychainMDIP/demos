@@ -64,7 +64,7 @@ function ViewSettingsName({ onSave }: { onSave: () => void }) {
     async function saveName() {
         try {
             const name = newName.trim();
-            await api.put(`/profile/${profile.did}/name`, { name });
+            await api.patch(`/profile/${profile.did}`, { name });
             setNewName(name);
             setCurrentName(name);
             onSave();
@@ -90,7 +90,7 @@ function ViewSettingsName({ onSave }: { onSave: () => void }) {
     async function saveTagline() {
         try {
             const tagline = newTagline;
-            await api.put(`/profile/${profile.did}/tagline`, { tagline });
+            await api.patch(`/profile/${profile.did}`, { tagline });
             setNewTagline(tagline);
             setCurrentTagline(tagline);
             onSave();
