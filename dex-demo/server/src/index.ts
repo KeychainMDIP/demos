@@ -808,6 +808,19 @@ function mintingFee(editions: number, asset: any): number {
     return storageFee + tokenFee;
 }
 
+function addTransaction(user: User, txn: any): void {
+    const balance = (user.credits || 0) + txn.credits;
+    const time = new Date().toISOString();
+
+    user.credits = balance;
+
+    if (!user.transactions) {
+        user.transactions = [];
+    }
+
+    user.transactions.push({ ...txn, balance, time });
+}
+
 app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Response) => {
     try {
         const did = req.params.did;
@@ -895,7 +908,15 @@ app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Resp
 
         await keymaster.updateAsset(did, { minted });
 
-        user.credits = (user.credits || 0) - totalFee;
+        addTransaction(user, {
+            type: 'mint',
+            credits: -totalFee,
+            details: {
+                did,
+                editions,
+            }
+        });
+
         db.writeDb(currentDb);
 
         res.json({ ok: true, message: `${editions} tokens minted for ${totalFee} credits`, cost: totalFee });
@@ -944,9 +965,17 @@ app.post('/api/asset/:did/unmint', isAuthenticated, async (req: Request, res: Re
         const currentDb = await db.loadDb();
         const users = currentDb.users || {};
         const user = users[owner];
-        const totalFee = mintingFee(asset.minted.editions, asset);
+        const editions = asset.minted.editions;
+        const totalFee = mintingFee(editions, asset);
 
-        user.credits = (user.credits || 0) + totalFee;
+        addTransaction(user, {
+            type: 'unmint',
+            credits: totalFee,
+            details: {
+                did,
+                editions,
+            }
+        });
         db.writeDb(currentDb);
 
         await keymaster.updateAsset(did, { minted: null });
@@ -1025,17 +1054,32 @@ app.post('/api/asset/:did/buy', isAuthenticated, async (req: Request, res: Respo
             }
 
             if (creatorProfile && royalty > 0) {
-                creatorProfile.credits = (creatorProfile.credits || 0) + royalty;
-                console.log(`${creatorProfile.name || 'Unknown'} (${creator}) received ${royalty} credits in royalties`);
+                addTransaction(creatorProfile, {
+                    type: 'royalty',
+                    credits: royalty,
+                    details: {
+                        did,
+                    }
+                });
             }
         }
 
         // Transfer credits
-        buyerProfile.credits = (buyerProfile.credits || 0) - price;
-        console.log(`${buyerProfile.name || 'Unknown'} (${buyer}) paid ${price} credits`);
+        addTransaction(buyerProfile, {
+            type: 'purchase',
+            credits: -price,
+            details: {
+                did,
+            }
+        });
 
-        sellerProfile.credits = (sellerProfile.credits || 0) + price - royalty;
-        console.log(`${sellerProfile.name || 'Unknown'} (${seller}) received ${price - royalty} credits`);
+        addTransaction(sellerProfile, {
+            type: 'sale',
+            credits: price - royalty,
+            details: {
+                did,
+            }
+        });
 
         // Transfer token ownership (DID ownership TBD)
         await keymaster.updateAsset(did, { token: { ...asset.token, owner: buyer, price: 0 } });
@@ -1354,6 +1398,7 @@ app.post('/api/collection/:did/upload', isAuthenticated, upload.array('images', 
         let filesErrored = 0;
         let bytesUploaded = 0;
         let creditsDebited = 0;
+        let credits = user.credits || 0;
 
         for (const file of files) {
             try {
@@ -1362,7 +1407,7 @@ app.post('/api/collection/:did/upload', isAuthenticated, upload.array('images', 
                 const storageFee = Math.ceil(fileSize * DexRates.storageRate);
 
                 // Check if user has enough credits
-                if ((user.credits || 0) < storageFee) {
+                if (credits < storageFee) {
                     filesSkipped++;
                     continue;
                 }
@@ -1393,7 +1438,7 @@ app.post('/api/collection/:did/upload', isAuthenticated, upload.array('images', 
                 collection.assets.push(assetDID);
 
                 // Debit user credits
-                user.credits = (user.credits || 0) - storageFee;
+                credits -= storageFee;
                 creditsDebited += storageFee;
 
                 filesUploaded++;
@@ -1403,6 +1448,16 @@ app.post('/api/collection/:did/upload', isAuthenticated, upload.array('images', 
                 filesErrored++;
             }
         }
+
+        addTransaction(user, {
+            type: 'upload',
+            credits: -creditsDebited,
+            details: {
+                did,
+                filesUploaded,
+                bytesUploaded,
+            }
+        });
 
         // Save updated collection and user data
         await keymaster.updateAsset(did, { collection });
@@ -1528,7 +1583,11 @@ app.post('/api/add-credits', isAuthenticated, async (req: Request, res: Response
             return;
         }
 
-        users[did].credits = (users[did].credits || 0) + amount;
+        addTransaction(users[did], {
+            type: 'credit',
+            credits: amount,
+        });
+
         db.writeDb(currentDb);
 
         res.json({
