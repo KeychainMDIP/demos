@@ -7,6 +7,7 @@ import { Box, Tab, Tabs, Typography } from "@mui/material";
 import ViewSettingsLogin from "./ViewSettingsLogin.js";
 import ViewSettingsName from "./ViewSettingsName.js";
 import ViewSettingsCredits from "./ViewSettingsCredits.js";
+import ViewSettingsTransactions from "./ViewSettingsTransactions.js";
 
 function ViewSettings() {
     const { did } = useParams();
@@ -66,12 +67,14 @@ function ViewSettings() {
                 <Tab key="collections" value="collections" label={'Collections'} />
                 <Tab key="links" value="links" label={'Links'} />
                 <Tab key="credits" value="credits" label={'Credits'} />
+                <Tab key="transactions" value="transactions" label={'Transactions'} />
             </Tabs>
             {tab === "logins" && <ViewSettingsLogin />}
             {tab === "name" && <ViewSettingsName onSave={refreshProfile} />}
             {tab === "collections" && <div>Collections settings coming soon...</div>}
             {tab === "links" && <div>Links settings coming soon...</div>}
             {tab === "credits" && <ViewSettingsCredits onSave={refreshProfile} />}
+            {tab === "transactions" && <ViewSettingsTransactions profile={profile} />}
         </Box>
     )
 }

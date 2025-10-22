@@ -384,7 +384,9 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
         }
 
         const rawProfile = currentDb.users[did];
-        const isUser = (req.session?.user?.did === did);
+        const userDID = req.session.user?.did;
+        const isUser = (userDID === did);
+        const isAdmin = (userDID === OWNER_DID) || (userDID && currentDb.users && currentDb.users[userDID]?.role === 'Admin');
         const collections: any[] = [];
         const collected: any[] = [];
 
@@ -466,7 +468,7 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
         }
 
         const profile: User = {
-            ...rawProfile,
+            ...(isUser || isAdmin ? rawProfile : { name: rawProfile.name, tagline: rawProfile.tagline }),
             did,
             pfp,
             isUser,
