@@ -390,10 +390,14 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
 
         for (const collectionId of rawProfile.assets?.collections || []) {
             try {
-                const asset = await keymaster.resolveAsset(collectionId);
-                if (asset && asset.collection) {
+                const { collection, name } = await keymaster.resolveAsset(collectionId);
+                if (collection) {
+                    if (!isUser && !collection.published) {
+                        continue;
+                    }
+
                     const thumbnail = {
-                        did: asset.collection.thumbnail || currentDb.settings?.thumbnail,
+                        did: collection.thumbnail || currentDb.settings?.thumbnail,
                         cid: undefined,
                     };
 
@@ -406,9 +410,10 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
 
                     collections.push({
                         did: collectionId,
-                        name: asset.name,
-                        items: asset.collection.assets.length,
+                        name,
+                        items: collection.assets.length,
                         thumbnail,
+                        published: collection.published,
                     });
                 }
             } catch (e) {
@@ -508,60 +513,6 @@ app.patch('/api/profile/:did', isAuthenticated, async (req: Request, res: Respon
         db.writeDb(currentDb);
 
         res.json({ ok: true, message: `Profile updated` });
-    }
-    catch (error) {
-        console.log(error);
-        res.status(500).send(String(error));
-    }
-});
-
-app.put('/api/profile/:did/name', isAuthenticated, async (req: Request, res: Response) => {
-    try {
-        const did = req.params.did;
-        const { name } = req.body;
-
-        if (!req.session.user || req.session.user.did !== did) {
-            res.status(403).json({ message: 'Forbidden' });
-            return;
-        }
-
-        const currentDb = await db.loadDb();
-        if (!currentDb.users || !currentDb.users[did]) {
-            res.status(404).send('Not found');
-            return;
-        }
-
-        currentDb.users[did].name = name;
-        db.writeDb(currentDb);
-
-        res.json({ ok: true, message: `name set to ${name}` });
-    }
-    catch (error) {
-        console.log(error);
-        res.status(500).send(String(error));
-    }
-});
-
-app.put('/api/profile/:did/tagline', isAuthenticated, async (req: Request, res: Response) => {
-    try {
-        const did = req.params.did;
-        const { tagline } = req.body;
-
-        if (!req.session.user || req.session.user.did !== did) {
-            res.status(403).json({ message: 'Forbidden' });
-            return;
-        }
-
-        const currentDb = await db.loadDb();
-        if (!currentDb.users || !currentDb.users[did]) {
-            res.status(404).send('Not found');
-            return;
-        }
-
-        currentDb.users[did].tagline = tagline;
-        db.writeDb(currentDb);
-
-        res.json({ ok: true, message: `tagline set to ${tagline}` });
     }
     catch (error) {
         console.log(error);
@@ -1219,21 +1170,30 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
             return;
         }
 
-        const data = docs.didDocumentData as { name?: string; collection?: any };
+        const { name, collection } = docs.didDocumentData as { name?: string; collection?: any };
 
-        if (!data.collection) {
+        if (!collection) {
             res.status(404).send("Not a collection");
             return;
         }
 
-        const profile = users[data.collection.owner] || { name: 'Unknown User' };
+        // If collection is not published and requester is not the owner, return 404
+        if (!collection.published) {
+            const requesterDID = req.session?.user?.did;
+            if (requesterDID !== collection.owner) {
+                res.status(404).send("DID not found");
+                return;
+            }
+        }
+
+        const profile = users[collection.owner] || { name: 'Unknown User' };
         const owner = {
-            did: data.collection.owner,
+            did: collection.owner,
             ...profile,
         };
 
         const assets = [];
-        for (const assetId of data.collection.assets) {
+        for (const assetId of collection.assets) {
             try {
                 const item = await keymaster.resolveAsset(assetId);
                 if (item) {
@@ -1247,13 +1207,14 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
             }
         }
 
-        const collection = {
-            name: data.name,
+        const collectionDetails = {
+            name,
             owner,
             assets,
-        }
+            published: collection.published,
+        };
 
-        res.json({ collection });
+        res.json({ collection: collectionDetails });
     } catch (error: any) {
         res.status(404).send("DID not found");
     }
@@ -1262,7 +1223,7 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
 app.patch('/api/collection/:did', isAuthenticated, async (req: Request, res: Response) => {
     try {
         const did = req.params.did;
-        const { name, thumbnail } = req.body;
+        const { name, thumbnail, published } = req.body;
 
         const data = await keymaster.resolveAsset(did);
 
@@ -1287,6 +1248,10 @@ app.patch('/api/collection/:did', isAuthenticated, async (req: Request, res: Res
 
         if (thumbnail !== undefined) {
             data.collection.thumbnail = thumbnail;
+        }
+
+        if (published !== undefined) {
+            data.collection.published = published;
         }
 
         await keymaster.updateAsset(did, data);
