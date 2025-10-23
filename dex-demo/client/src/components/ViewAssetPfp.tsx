@@ -5,7 +5,7 @@ import { useAuth } from "../contexts/AuthContext.js";
 import { useApi } from "../contexts/ApiContext.js";
 import { Button } from "@mui/material";
 
-function ViewAssetPfp({ asset, onSave }: { asset: any, onSave: () => void }) {
+function ViewAssetPfp({ asset, isAssetOwner, isCollectionOwner, onSave }: { asset: any, isAssetOwner: boolean, isCollectionOwner: boolean, onSave: () => void }) {
     const { did } = useParams();
     const auth = useAuth();
     const api = useApi();
@@ -63,18 +63,26 @@ function ViewAssetPfp({ asset, onSave }: { asset: any, onSave: () => void }) {
                     borderRadius: '50%',
                 }}
             />
-            <Button variant="contained" color="primary" onClick={setProfilePic}>
-                Set Profile Pic
-            </Button>
-            <Button variant="contained" color="primary" onClick={setCollectionThumbnail}>
-                Set Collection Thumbnail
-            </Button>
-            <Button variant="contained" color="primary" onClick={setDefaultPfp}>
-                Set Default Pfp
-            </Button>
-            <Button variant="contained" color="primary" onClick={setDefaultThumbnail}>
-                Set Default Thumbnail
-            </Button>
+            {isAssetOwner &&
+                <Button variant="contained" color="primary" onClick={setProfilePic}>
+                    Set Profile Pic
+                </Button>
+            }
+            {isCollectionOwner &&
+                <Button variant="contained" color="primary" onClick={setCollectionThumbnail}>
+                    Set Collection Thumbnail
+                </Button>
+            }
+            {auth.isAdmin &&
+                <>
+                    <Button variant="contained" color="primary" onClick={setDefaultPfp}>
+                        Set Default Pfp
+                    </Button>
+                    <Button variant="contained" color="primary" onClick={setDefaultThumbnail}>
+                        Set Default Thumbnail
+                    </Button>
+                </>
+            }
         </div>
     );
 }

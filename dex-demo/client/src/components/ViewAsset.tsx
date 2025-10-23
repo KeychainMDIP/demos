@@ -28,6 +28,8 @@ function ViewAsset() {
 
     const [asset, setAsset] = useState<any>(null);
     const [isEditable, setIsEditable] = useState<boolean>(false);
+    const [isAssetOwner, setIsAssetOwner] = useState<boolean>(false);
+    const [isCollectionOwner, setIsCollectionOwner] = useState<boolean>(false);
     const [tab, setTab] = useState<string>("metadata");
 
     const fetchAsset = useCallback(async () => {
@@ -40,11 +42,20 @@ function ViewAsset() {
         try {
             const getAsset = await api.get(`/asset/${did}`);
             const asset = getAsset.data.asset;
-            const owner = asset.matrix?.owner;
-            const isEditable = auth.isAuthenticated && auth.userDID === owner && !asset.minted && !asset.token;
+            const owner = asset.token?.owner || asset.matrix?.owner;
+            const isAssetOwner = auth.isAuthenticated && auth.userDID === owner;
+            const isEditable = isAssetOwner && asset.matrix && !asset.minted && !asset.token;
 
             setAsset(asset);
             setIsEditable(isEditable);
+            setIsAssetOwner(isAssetOwner);
+
+            if (asset.matrix?.collection) {
+                const getCollection = await api.get(`/collection/${asset.matrix.collection}`);
+                const { collection } = getCollection.data;
+                const isCollectionOwner = auth.isAuthenticated && auth.userDID === collection.owner.did;
+                setIsCollectionOwner(isCollectionOwner);
+            }
         }
         catch (error: any) {
             showSnackbar("Failed to load asset data", 'error');
@@ -106,7 +117,7 @@ function ViewAsset() {
                         {asset.minted &&
                             <Tab key="trade" value="trade" label={'Trade'} />
                         }
-                        {auth.isAuthenticated &&
+                        {(isAssetOwner || auth.isAdmin) &&
                             <Tab key="pfp" value="pfp" label={'Pfp'} />
                         }
                         {(asset.minted || asset.token) &&
@@ -129,7 +140,7 @@ function ViewAsset() {
                         <ViewAssetTrade asset={asset} onSave={fetchAsset} />
                     }
                     {tab === 'pfp' &&
-                        <ViewAssetPfp asset={asset} onSave={fetchAsset} />
+                        <ViewAssetPfp asset={asset} isAssetOwner={isAssetOwner} isCollectionOwner={isCollectionOwner} onSave={fetchAsset} />
                     }
                     {tab === 'history' &&
                         <ViewAssetHistory asset={asset} />
