@@ -28,7 +28,7 @@ function ViewSettingsTransactions({ profile }: { profile: any }) {
     }, [profile]);
 
     if (!profile || !transactions) {
-        return;
+        return <></>;
     }
 
     function AssetLink({ did }: { did: string }) {
