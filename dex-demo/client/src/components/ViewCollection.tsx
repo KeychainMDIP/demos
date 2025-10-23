@@ -4,7 +4,8 @@ import { useDropzone } from 'react-dropzone';
 import { useSnackbar } from "../contexts/SnackbarContext.js";
 import { useAuth } from "../contexts/AuthContext";
 import { useApi } from "../contexts/ApiContext.js";
-import { Box, Button, Modal, Typography } from "@mui/material";
+import { Box, Button, Menu, MenuItem, Modal, Typography } from "@mui/material";
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import AssetGrid from "./AssetGrid.js";
 import UserBadge from "./UserBadge.js";
 
@@ -21,6 +22,8 @@ function ViewCollection() {
     const [modalOpen, setModalOpen] = useState<boolean>(false);
     const [uploadResults, setUploadResults] = useState<any>(null);
     const [uploadWarnings, setUploadWarnings] = useState<any>(null);
+    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const open = Boolean(anchorEl);
 
     async function fetchCollection() {
         if (!did) {
@@ -302,6 +305,13 @@ function ViewCollection() {
         );
     };
 
+    const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+        setAnchorEl(event.currentTarget);
+    };
+    const handleMenuClose = () => {
+        setAnchorEl(null);
+    };
+
     return (
         <>
             <Box sx={{ width: '100%', p: 3 }}>
@@ -310,34 +320,32 @@ function ViewCollection() {
                     <UserBadge did={collection.owner.did} fontSize={'2.0em'} imgSize={'50px'} />
                 </Box>
                 {auth.userDID === collection.owner.did &&
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                        <Button variant="contained" color="primary" onClick={addAsset}>
-                            Add asset...
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={handleMenuOpen}
+                            endIcon={<MoreVertIcon />}
+                        >
+                            Actions
                         </Button>
-                        <Button variant="contained" color="primary" onClick={uploadAssets}>
-                            Upload images...
-                        </Button>
-                        <Button variant="contained" color="primary" onClick={renameCollection}>
-                            Rename collection...
-                        </Button>
-                        <Button variant="contained" color="primary" onClick={renameAssets}>
-                            Rename assets...
-                        </Button>
-                        <Button variant="contained" color="primary" onClick={sortAssets}>
-                            Sort assets...
-                        </Button>
-                        <Button variant="contained" color="primary" onClick={removeCollection}>
-                            Remove collection...
-                        </Button>
-                        {collection.published ?
-                            <Button variant="contained" color="primary" onClick={unpublishCollection}>
-                                Unpublish collection
-                            </Button>
-                            :
-                            <Button variant="contained" color="primary" onClick={publishCollection}>
-                                Publish collection
-                            </Button>
-                        }
+                        <Menu
+                            anchorEl={anchorEl}
+                            open={open}
+                            onClose={handleMenuClose}
+                        >
+                            <MenuItem onClick={() => { handleMenuClose(); addAsset(); }}>Add asset...</MenuItem>
+                            <MenuItem onClick={() => { handleMenuClose(); uploadAssets(); }}>Upload images...</MenuItem>
+                            <MenuItem onClick={() => { handleMenuClose(); renameCollection(); }}>Rename collection...</MenuItem>
+                            <MenuItem onClick={() => { handleMenuClose(); renameAssets(); }}>Rename assets...</MenuItem>
+                            <MenuItem onClick={() => { handleMenuClose(); sortAssets(); }}>Sort assets...</MenuItem>
+                            <MenuItem onClick={() => { handleMenuClose(); removeCollection(); }}>Remove collection...</MenuItem>
+                            {collection.published ?
+                                <MenuItem onClick={() => { handleMenuClose(); unpublishCollection(); }}>Unpublish collection</MenuItem>
+                                :
+                                <MenuItem onClick={() => { handleMenuClose(); publishCollection(); }}>Publish collection</MenuItem>
+                            }
+                        </Menu>
                     </Box>
                 }
                 <AssetGrid assets={collection.assets} />
