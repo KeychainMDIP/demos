@@ -30,6 +30,11 @@ function ViewSettings() {
             const getProfile = await api.get(`/profile/${did}`);
             const profile = getProfile.data;
 
+            if (!profile?.credits) {
+                showSnackbar("No access to this profile", "error");
+                navigate('/');
+            }
+
             setProfile(profile);
         }
         catch (error: any) {

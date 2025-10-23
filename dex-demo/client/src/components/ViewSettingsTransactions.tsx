@@ -9,8 +9,10 @@ import {
     Paper,
 } from '@mui/material';
 import { formatTime } from "../utils.js";
+import { useApi } from "../contexts/ApiContext.js";
 
 function ViewSettingsTransactions({ profile }: { profile: any }) {
+    const api = useApi();
     const [transactions, setTransactions] = useState([]);
 
     useEffect(() => {
@@ -27,6 +29,31 @@ function ViewSettingsTransactions({ profile }: { profile: any }) {
 
     if (!profile || !transactions) {
         return;
+    }
+
+    function AssetLink({ did }: { did: string }) {
+        const [title, setTitle] = useState<string>("");
+
+        useEffect(() => {
+            const fetchAsset = async () => {
+                try {
+                    const getAsset = await api.get(`/asset/${did}`);
+                    const { asset } = getAsset.data;
+
+                    setTitle(asset.title || "unknown asset");
+                } catch (error: any) {
+                    setTitle("unknown asset");
+                }
+            };
+
+            fetchAsset();
+        }, [did]);
+
+        return (
+            <>&nbsp;
+                <a href={`/asset/${did}`}>"{title}"</a>
+            </>
+        );
     }
 
     function TransactionRow({ record }: { record: any }) {
@@ -52,17 +79,23 @@ function ViewSettingsTransactions({ profile }: { profile: any }) {
                 }
 
                 if (record.type === 'mint') {
-                    if (record.details.editions === 1) {
+                    if (record.details.editions === 0) {
                         setMessage(
                             <div style={{ display: 'flex', alignItems: 'center' }}>
-                                {`Minted a single edition of ${record.details.did}.`}
+                                {`Minted`}<AssetLink did={record.details.did} />{'.'}
+                            </div>
+                        );
+                    } else if (record.details.editions === 1) {
+                        setMessage(
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                {`Minted a single edition of`}<AssetLink did={record.details.did} />{'.'}
                             </div>
                         );
                     }
                     else {
                         setMessage(
                             <div style={{ display: 'flex', alignItems: 'center' }}>
-                                {`Minted ${record.details.editions} editions of ${record.details.did}.`}
+                                {`Minted ${record.details.editions} editions of`}<AssetLink did={record.details.did} />{'.'}
                             </div>
                         );
                     }
@@ -71,7 +104,7 @@ function ViewSettingsTransactions({ profile }: { profile: any }) {
                 if (record.type === 'purchase') {
                     setMessage(
                         <div style={{ display: 'flex', alignItems: 'center' }}>
-                            {`Purchased ${record.details.did} for ${record.credits} credits.`}
+                            {`Purchased`}<AssetLink did={record.details.did} />{'.'}
                         </div>
                     );
                 }
@@ -79,7 +112,7 @@ function ViewSettingsTransactions({ profile }: { profile: any }) {
                 if (record.type === 'sale') {
                     setMessage(
                         <div style={{ display: 'flex', alignItems: 'center' }}>
-                            {`Sold ${record.details.did} for ${record.credits} credits.`}
+                            {`Sold`}<AssetLink did={record.details.did} />{'.'}
                         </div>
                     );
                 }
@@ -87,7 +120,7 @@ function ViewSettingsTransactions({ profile }: { profile: any }) {
                 if (record.type === 'royalty') {
                     setMessage(
                         <div style={{ display: 'flex', alignItems: 'center' }}>
-                            {`Received ${record.credits} credits royalty from ${record.details.did}.`}
+                            {`Received royalty for`}<AssetLink did={record.details.did} />{'.'}
                         </div>
                     );
                 }
@@ -95,7 +128,7 @@ function ViewSettingsTransactions({ profile }: { profile: any }) {
                 if (record.type === 'upload') {
                     setMessage(
                         <div style={{ display: 'flex', alignItems: 'center' }}>
-                            {`Uploaded ${record.details.filesUploaded} files (${record.details.bytesUploaded} bytes) for ${record.credits} credits.`}
+                            {`Uploaded ${record.details.filesUploaded} files (${record.details.bytesUploaded} bytes).`}
                         </div>
                     );
                 }
@@ -107,8 +140,8 @@ function ViewSettingsTransactions({ profile }: { profile: any }) {
         return (
             <TableRow>
                 <TableCell>{time}</TableCell>
-                <TableCell>{credits}</TableCell>
-                <TableCell>{balance}</TableCell>
+                <TableCell align="right" style={{ fontFamily: 'monospace' }}>{credits}</TableCell>
+                <TableCell align="right" style={{ fontFamily: 'monospace' }}>{balance}</TableCell>
                 <TableCell>{message}</TableCell>
             </TableRow>
         );
@@ -120,8 +153,8 @@ function ViewSettingsTransactions({ profile }: { profile: any }) {
                 <TableHead>
                     <TableRow>
                         <TableCell>Time</TableCell>
-                        <TableCell>Credits</TableCell>
-                        <TableCell>Balance</TableCell>
+                        <TableCell align="right">Credits</TableCell>
+                        <TableCell align="right">Balance</TableCell>
                         <TableCell>Transaction</TableCell>
                     </TableRow>
                 </TableHead>
