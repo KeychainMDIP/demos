@@ -141,6 +141,18 @@ function ViewAsset() {
         );
     }
 
+    function MatrixLink({ matrix }: { matrix: any }) {
+        if (!matrix) {
+            return <span>unknown matrix</span>;
+        }
+
+        return (
+            <a href={`/asset/${matrix.did}`}>
+                <Typography sx={{ fontSize: '1.0em' }}>"{matrix.title || 'no name'}"</Typography>
+            </a>
+        );
+    }
+
     return (
         <Box sx={{ width: '100%', p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -149,7 +161,12 @@ function ViewAsset() {
                 <Typography sx={{ fontSize: '2.0em' }}>by</Typography>
                 <UserBadge did={asset.creator.did} fontSize={'2.0em'} imgSize={'50px'} />
             </Box>
-            {!asset.token && (
+            {asset.token ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography sx={{ fontSize: '1.0em' }}>Limited edition of</Typography>
+                    <MatrixLink matrix={asset.matrix} />
+                </Box>
+            ) : (
                 <div style={{ display: 'inline-block' }}>
                     <Button
                         color="inherit"
@@ -214,7 +231,7 @@ function ViewAsset() {
                         <ViewAssetMetadata asset={asset} />
                     }
                     {tab === 'edit' &&
-                        <ViewAssetEdit asset={asset} onSave={fetchAsset} />
+                        <ViewAssetEdit asset={asset} collection={collection} onSave={fetchAsset} />
                     }
                     {tab === 'mint' &&
                         <ViewAssetMint asset={asset} onMint={mintAsset} />

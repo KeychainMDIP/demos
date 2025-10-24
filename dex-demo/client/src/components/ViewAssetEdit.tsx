@@ -13,7 +13,7 @@ import {
     TextField,
 } from "@mui/material";
 
-function ViewAssetEdit({ asset, onSave }: { asset: any, onSave: () => void }) {
+function ViewAssetEdit({ asset, collection, onSave }: { asset: any, collection: any, onSave: () => void }) {
     const { did } = useParams();
     const navigate = useNavigate();
     const api = useApi();
@@ -31,8 +31,8 @@ function ViewAssetEdit({ asset, onSave }: { asset: any, onSave: () => void }) {
                 const { collections } = getProfile.data;
 
                 setCollections(collections);
-                setCurrentCollection(asset.collection.name);
-                setNewCollection(asset.collection.name);
+                setCurrentCollection(collection.name);
+                setNewCollection(collection.name);
             }
             catch (error: any) {
                 showSnackbar("Failed to load profile data", 'error');

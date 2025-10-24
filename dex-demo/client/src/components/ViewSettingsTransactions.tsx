@@ -101,6 +101,29 @@ function ViewSettingsTransactions({ profile }: { profile: any }) {
                     }
                 }
 
+                if (record.type === 'unmint') {
+                    if (record.details.editions === 0) {
+                        setMessage(
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                {`Unminted`}<AssetLink did={record.details.did} />{'.'}
+                            </div>
+                        );
+                    } else if (record.details.editions === 1) {
+                        setMessage(
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                {`Unminted a single edition of`}<AssetLink did={record.details.did} />{'.'}
+                            </div>
+                        );
+                    }
+                    else {
+                        setMessage(
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                {`Unminted ${record.details.editions} editions of`}<AssetLink did={record.details.did} />{'.'}
+                            </div>
+                        );
+                    }
+                }
+
                 if (record.type === 'purchase') {
                     setMessage(
                         <div style={{ display: 'flex', alignItems: 'center' }}>
