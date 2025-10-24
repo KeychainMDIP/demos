@@ -9,7 +9,7 @@ function AssetCard({ asset }: { asset: any }) {
         justifyContent: 'center',
         overflow: 'hidden',
         position: 'relative',
-        border: asset.sold ? '1px solid #0ff' : asset.published ? '1px solid #0f0' : '1px solid #ccc',
+        border: asset.sold ? '1px solid #0ff' : asset.minted ? '1px solid #0f0' : '1px solid #ccc',
         borderRadius: '4px',
         padding: '8px',
     };

@@ -1207,10 +1207,11 @@ app.delete('/api/collection/:did', isAuthenticated, async (req: Request, res: Re
 
 app.get('/api/collection/:did', async (req: Request, res: Response) => {
     try {
+        const did = req.params.did;
         const currentDb = await db.loadDb();
         const users = currentDb.users || {};
 
-        const docs = await keymaster.resolveDID(req.params.did);
+        const docs = await keymaster.resolveDID(did);
         if (!docs) {
             res.status(404).send("DID not found");
             return;
@@ -1237,15 +1238,23 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
             did: collection.owner,
             ...profile,
         };
+        const isOwner = req.session?.user?.did === collection.owner;
 
         const assets = [];
         for (const assetId of collection.assets) {
             try {
                 const item = await keymaster.resolveAsset(assetId);
+
+                if (!isOwner && !item.minted) {
+                    // If the asset is not minted and the requester is not the owner, skip it
+                    continue;
+                }
+
                 if (item) {
                     assets.push({
                         did: assetId,
-                        ...item,
+                        image: item.image,
+                        title: item.title,
                     });
                 }
             } catch (e) {
@@ -1254,6 +1263,7 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
         }
 
         const collectionDetails = {
+            did,
             name,
             owner,
             assets,
