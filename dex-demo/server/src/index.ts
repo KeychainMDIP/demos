@@ -467,11 +467,14 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
             }
         }
 
+        const adminAccess = isUser || isAdmin;
+
         const profile: User = {
-            ...(isUser || isAdmin ? rawProfile : { name: rawProfile.name, tagline: rawProfile.tagline }),
+            ...(adminAccess ? rawProfile : { name: rawProfile.name, tagline: rawProfile.tagline }),
             did,
             pfp,
             isUser,
+            adminAccess,
             collections,
             collected,
         };
