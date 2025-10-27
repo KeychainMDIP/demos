@@ -10,6 +10,10 @@ export interface User {
 export interface DatabaseStructure {
     settings: any;
     users?: Record<string, User>;
+    showcase?: {
+        collections: string[];
+    };
+    [key: string]: any;
 }
 
 export interface DatabaseInterface {

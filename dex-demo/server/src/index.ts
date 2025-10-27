@@ -1573,6 +1573,110 @@ app.post('/api/add-credits', isAuthenticated, async (req: Request, res: Response
     }
 });
 
+app.post('/api/showcase', isAdmin, async (req: Request, res: Response) => {
+    try {
+        const { collection, add } = req.body;
+
+        // Ensure add is defined and is a boolean
+        const addToShowcase = Boolean(add);
+        const currentDb = await db.loadDb();
+
+        if (!currentDb.showcase) {
+            currentDb.showcase = { collections: [] };
+        }
+
+        if (collection) {
+            if (!collection || typeof collection !== 'string') {
+                res.status(400).json({ message: 'Invalid collection DID' });
+                return;
+            }
+
+            try {
+                const asset = await keymaster.resolveAsset(collection);
+
+                if (!asset || !asset.collection) {
+                    res.status(400).send("Invalid collection DID");
+                    return;
+                }
+            }
+            catch (error) {
+                res.status(400).send("Invalid collection DID");
+                return;
+            }
+
+            let collections = currentDb.showcase.collections || [];
+
+            if (addToShowcase) {
+                if (!collections.includes(collection)) {
+                    collections.push(collection);
+                }
+            } else {
+                collections = collections.filter(c => c !== collection);
+            }
+
+            currentDb.showcase.collections = collections;
+        }
+
+        db.writeDb(currentDb);
+
+        res.json({
+            ok: true,
+            message: 'Showcase updated successfully',
+        });
+    } catch (error: any) {
+        res.status(500).send("Failed to update showcase");
+    }
+});
+
+app.get('/api/showcase', async (_, res) => {
+    try {
+        const currentDb = await db.loadDb();
+
+        if (!currentDb.showcase) {
+            currentDb.showcase = { collections: [] };
+        }
+
+        const collections: any[] = [];
+
+        for (const collectionId of currentDb.showcase.collections || []) {
+            try {
+                const { collection, name } = await keymaster.resolveAsset(collectionId);
+                if (collection) {
+                    if (!collection.published) {
+                        continue;
+                    }
+
+                    const thumbnail = {
+                        did: collection.thumbnail || currentDb.settings?.thumbnail,
+                        cid: undefined,
+                    };
+
+                    if (thumbnail.did) {
+                        const thumbAsset = await keymaster.resolveAsset(thumbnail.did);
+                        if (thumbAsset && thumbAsset.image) {
+                            thumbnail.cid = thumbAsset.image.cid;
+                        }
+                    }
+
+                    collections.push({
+                        did: collectionId,
+                        name,
+                        items: collection.assets.length,
+                        thumbnail,
+                        published: collection.published,
+                    });
+                }
+            } catch (e) {
+                console.log(`Failed to resolve collection ${collectionId}: ${e}`);
+            }
+        }
+
+        res.json({ showcase: { collections } });
+    } catch (error: any) {
+        res.status(404).send(error.toString());
+    }
+});
+
 if (process.env.DEX_SERVE_CLIENT !== 'false') {
     const __dirname = path.dirname(fileURLToPath(import.meta.url));
     const clientBuildPath = path.join(__dirname, '../../client/build');
