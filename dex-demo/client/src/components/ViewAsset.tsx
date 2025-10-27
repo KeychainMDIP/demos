@@ -129,26 +129,26 @@ function ViewAsset() {
         setTab('mint');
     }
 
-    function CollectionLink({ collection }: { collection: any }) {
+    function CollectionLink({ collection, fontSize = '1.0em' }: { collection: any, fontSize?: string }) {
         if (!collection) {
             return <span>unknown collection</span>;
         }
 
         return (
             <a href={`/collection/${collection.did}`}>
-                <Typography sx={{ fontSize: '2.0em' }}>"{collection.name || 'no name'}"</Typography>
+                <Typography sx={{ fontSize }}>"{collection.name || 'no name'}"</Typography>
             </a>
         );
     }
 
-    function MatrixLink({ matrix }: { matrix: any }) {
-        if (!matrix) {
-            return <span>unknown matrix</span>;
+    function AssetLink({ asset, fontSize = '1.0em' }: { asset: any, fontSize?: string }) {
+        if (!asset) {
+            return <span>unknown asset</span>;
         }
 
         return (
-            <a href={`/asset/${matrix.did}`}>
-                <Typography sx={{ fontSize: '1.0em' }}>"{matrix.title || 'no name'}"</Typography>
+            <a href={`/asset/${asset.did}`}>
+                <Typography sx={{ fontSize }}>"{asset.title || 'no name'}"</Typography>
             </a>
         );
     }
@@ -156,15 +156,15 @@ function ViewAsset() {
     return (
         <Box sx={{ width: '100%', p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography sx={{ fontSize: '2.0em' }}>"{asset.title || 'no title'}" in</Typography>
-                <CollectionLink collection={collection} />
-                <Typography sx={{ fontSize: '2.0em' }}>by</Typography>
-                <UserBadge did={asset.creator.did} fontSize={'2.0em'} imgSize={'50px'} />
+                <Typography sx={{ fontSize: '1.5em' }}>"{asset.title || 'no title'}" in</Typography>
+                <CollectionLink collection={collection} fontSize={'1.5em'} />
+                <Typography sx={{ fontSize: '1.5em' }}>by</Typography>
+                <UserBadge did={asset.creator.did} fontSize={'1.5em'} imgSize={'50px'} />
             </Box>
             {asset.token ? (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <Typography sx={{ fontSize: '1.0em' }}>Limited edition of</Typography>
-                    <MatrixLink matrix={asset.matrix} />
+                    <AssetLink asset={asset.matrix} fontSize={'1.0em'} />
                 </Box>
             ) : (
                 <div style={{ display: 'inline-block' }}>
