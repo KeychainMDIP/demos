@@ -21,12 +21,9 @@ function ViewAssetMint({ asset, onMint }: { asset: any, onMint: () => void }) {
     const api = useApi();
     const { showSnackbar, showSnackbarError } = useSnackbar();
 
-    const [fileSize, setFileSize] = useState<number>(0);
     const [editions, setEditions] = useState<number>(1);
     const [editionRate, setEditionRate] = useState<number>(0);
-    const [editionFee, setEditionFee] = useState<number>(0);
-    const [storageFee, setStorageFee] = useState<number>(0);
-    const [totalFee, setTotalFee] = useState<number>(0);
+    const [mintingFee, setMintingFee] = useState<number>(0);
     const [royalty, setRoyalty] = useState<number>(0);
     const [license, setLicense] = useState<string>('');
     const [licenses, setLicenses] = useState<string[]>([]);
@@ -44,24 +41,17 @@ function ViewAssetMint({ asset, onMint }: { asset: any, onMint: () => void }) {
                 const licenseList = Object.keys(licenses).sort();
                 const rates = getRates.data;
                 const editionRate = rates.editionRate || 100;
-                const storageRate = rates.storageRate || 0.001;
                 const credits = auth.profile?.credits || 0;
-                const fileSize = asset.image?.bytes || 0;
-                const storageFee = Math.ceil(fileSize * storageRate);
                 const editionFee = editions * editionRate;
-                const totalFee = storageFee + editionFee;
 
                 setLicenses(licenseList);
                 setLicense(licenseList[0]);
                 setCredits(credits);
-                setFileSize(fileSize);
-                setStorageFee(storageFee);
                 setEditionRate(editionRate);
                 setEditions(editions);
-                setEditionFee(editionFee);
-                setTotalFee(totalFee);
-                setDisableMint(totalFee > credits);
-                setShowAddCredits(totalFee > credits);
+                setMintingFee(editionFee);
+                setDisableMint(editionFee > credits);
+                setShowAddCredits(editionFee > credits);
             } catch (error) {
                 showSnackbar("Failed to fetch licenses", 'error');
             }
@@ -74,24 +64,22 @@ function ViewAssetMint({ asset, onMint }: { asset: any, onMint: () => void }) {
         let editions = parseInt(value, 10);
 
         if (isNaN(editions)) {
-            editions = 0;
+            editions = 1;
         }
 
-        // Clamp editions between 0 and 100
-        if (editions < 0) {
-            editions = 0;
+        // Clamp editions between 1 and 100
+        if (editions < 1) {
+            editions = 1;
         } else if (editions > 100) {
             editions = 100;
         }
 
-        const editionFee = editions * editionRate;
-        const totalFee = storageFee + editionFee;
+        const mintingFee = editions * editionRate;
 
         setEditions(editions);
-        setEditionFee(editionFee);
-        setTotalFee(totalFee);
-        setDisableMint(totalFee > credits);
-        setShowAddCredits(totalFee > credits);
+        setMintingFee(mintingFee);
+        setDisableMint(mintingFee > credits);
+        setShowAddCredits(mintingFee > credits);
     }
 
     function handleRoyaltyChange(value: string) {
@@ -104,8 +92,8 @@ function ViewAssetMint({ asset, onMint }: { asset: any, onMint: () => void }) {
             const getCredits = await api.post(`/add-credits`, { amount: 1000 });
             const { balance } = getCredits.data;
             setCredits(balance);
-            setDisableMint(totalFee > balance);
-            setShowAddCredits(totalFee > balance);
+            setDisableMint(mintingFee > balance);
+            setShowAddCredits(mintingFee > balance);
         } catch (error) {
             showSnackbar("Failed to add credits", 'error');
         }
@@ -128,28 +116,6 @@ function ViewAssetMint({ asset, onMint }: { asset: any, onMint: () => void }) {
         <TableContainer>
             <Table>
                 <TableBody>
-                    <TableRow>
-                        <TableCell>Title</TableCell>
-                        <TableCell>{asset.title || 'no title'}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                        <TableCell>Collection</TableCell>
-                        {asset.collection?.name ? (
-                            <TableCell>
-                                <a href={`/collection/${asset.collection.did}`}>{asset.collection.name}</a>
-                            </TableCell>
-                        ) : (
-                            <TableCell>no collection</TableCell>
-                        )}
-                    </TableRow>
-                    <TableRow>
-                        <TableCell>Creator</TableCell>
-                        {asset.creator?.did && asset.creator?.name ? (
-                            <TableCell><a href={`/profile/${asset.creator.did}`}>{asset.creator.name}</a></TableCell>
-                        ) : (
-                            <TableCell>no creator</TableCell>
-                        )}
-                    </TableRow>
                     <TableRow>
                         <TableCell>License</TableCell>
                         <TableCell>
@@ -183,7 +149,7 @@ function ViewAssetMint({ asset, onMint }: { asset: any, onMint: () => void }) {
                         </TableCell>
                     </TableRow>
                     <TableRow>
-                        <TableCell>Editions (0-100)</TableCell>
+                        <TableCell>Editions (1-100)</TableCell>
                         <TableCell>
                             <TextField
                                 type="number"
@@ -191,7 +157,7 @@ function ViewAssetMint({ asset, onMint }: { asset: any, onMint: () => void }) {
                                 onChange={(e) => changeEditions(e.target.value)}
                                 margin="normal"
                                 inputProps={{
-                                    min: 0,
+                                    min: 1,
                                     max: 100,
                                 }}
                                 sx={{ width: '20ch' }}
@@ -199,16 +165,8 @@ function ViewAssetMint({ asset, onMint }: { asset: any, onMint: () => void }) {
                         </TableCell>
                     </TableRow>
                     <TableRow>
-                        <TableCell>Storage fee</TableCell>
-                        <TableCell>{storageFee} credits for {fileSize} bytes</TableCell>
-                    </TableRow>
-                    <TableRow>
                         <TableCell>Minting fee</TableCell>
-                        <TableCell>{editionFee} credits for {editions} editions</TableCell>
-                    </TableRow>
-                    <TableRow>
-                        <TableCell>Total fee</TableCell>
-                        <TableCell>{totalFee} credits</TableCell>
+                        <TableCell>{mintingFee} credits for {editions} editions</TableCell>
                     </TableRow>
                     <TableRow>
                         <TableCell>Current balance</TableCell>

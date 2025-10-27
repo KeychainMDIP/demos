@@ -95,7 +95,6 @@ function ViewProfile() {
             >
                 <Tab key="collections" value="collections" label={'Collections'} />
                 <Tab key="collected" value="collected" label={'Collected'} />
-                {profile.isUser && <Tab key="deleted" value="deleted" label={'Deleted'} />}
             </Tabs>
             {tab === 'collections' &&
                 <Box sx={{ width: '100%', p: 3 }}>

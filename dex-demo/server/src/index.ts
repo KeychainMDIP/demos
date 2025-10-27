@@ -608,8 +608,8 @@ app.get('/api/asset/:did', async (req: Request, res: Response) => {
         }
 
         if (asset.token?.matrix) {
-            const { matrix, minted } = await keymaster.resolveAsset(asset.token.matrix);
-            asset.matrix = matrix;
+            const { matrix, minted, title } = await keymaster.resolveAsset(asset.token.matrix);
+            asset.matrix = { ...matrix, title, did: asset.token.matrix };
 
             if (minted.history && minted.history.length > 0) {
                 asset.token.history = minted.history.filter((record: any) => record.details?.did === req.params.did) || [];
@@ -624,39 +624,6 @@ app.get('/api/asset/:did', async (req: Request, res: Response) => {
         if (asset.matrix) {
             asset.matrix.original = asset.cloned;
             asset.creator = await fetchUser(asset.matrix.owner);
-
-            if (asset.matrix.collection) {
-                try {
-                    const collection = await keymaster.resolveAsset(asset.matrix.collection);
-                    if (collection && collection.collection) {
-                        asset.collection = {
-                            ...collection.collection,
-                            did: asset.matrix.collection,
-                            name: collection.name,
-                        };
-                    }
-                } catch (e) {
-                    console.log(`Failed to resolve collection ${asset.matrix.collection}: ${e}`);
-                }
-
-                const thumbnail = {
-                    did: asset.collection.thumbnail?.did || currentDb.settings?.thumbnail,
-                    cid: undefined,
-                };
-
-                if (thumbnail.did) {
-                    try {
-                        const thumbnailAsset = await keymaster.resolveAsset(thumbnail.did);
-                        if (thumbnailAsset && thumbnailAsset.image) {
-                            thumbnail.cid = thumbnailAsset.image.cid;
-                        }
-                    } catch (e) {
-                        console.log(`Failed to resolve profile picture ${thumbnail.did}: ${e}`);
-                    }
-                }
-
-                asset.collection.thumbnail = thumbnail;
-            }
         } else {
             asset.creator = {};
         }
@@ -802,14 +769,6 @@ app.post('/api/asset/:did/move', isAuthenticated, async (req: Request, res: Resp
     }
 });
 
-function mintingFee(editions: number, asset: any): number {
-    const fileSize = asset.image?.bytes || 0;
-    const storageFee = Math.ceil(fileSize * DexRates.storageRate);
-    const tokenFee = editions * DexRates.editionRate;
-
-    return storageFee + tokenFee;
-}
-
 function addTransaction(user: User, txn: any): void {
     const balance = (user.credits || 0) + txn.credits;
     const time = new Date().toISOString();
@@ -871,9 +830,9 @@ app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Resp
             return;
         }
 
-        const totalFee = mintingFee(editions, asset);
+        const mintingFee = editions * DexRates.editionRate;
 
-        if ((user.credits || 0) < totalFee) {
+        if ((user.credits || 0) < mintingFee) {
             res.status(403).send("Insufficient credits");
             return;
         }
@@ -912,7 +871,7 @@ app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Resp
 
         addTransaction(user, {
             type: 'mint',
-            credits: -totalFee,
+            credits: -mintingFee,
             details: {
                 did,
                 editions,
@@ -921,7 +880,7 @@ app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Resp
 
         db.writeDb(currentDb);
 
-        res.json({ ok: true, message: `${editions} tokens minted for ${totalFee} credits`, cost: totalFee });
+        res.json({ ok: true, message: `${editions} tokens minted for ${mintingFee} credits`, cost: mintingFee });
     } catch (error: any) {
         res.status(500).send("Failed to update asset");
     }
@@ -968,11 +927,11 @@ app.post('/api/asset/:did/unmint', isAuthenticated, async (req: Request, res: Re
         const users = currentDb.users || {};
         const user = users[owner];
         const editions = asset.minted.editions;
-        const totalFee = mintingFee(editions, asset);
+        const mintingFee = editions * DexRates.editionRate;
 
         addTransaction(user, {
             type: 'unmint',
-            credits: totalFee,
+            credits: mintingFee,
             details: {
                 did,
                 editions,
@@ -982,7 +941,7 @@ app.post('/api/asset/:did/unmint', isAuthenticated, async (req: Request, res: Re
 
         await keymaster.updateAsset(did, { minted: null });
 
-        res.json({ ok: true, message: `${totalFee} credits returned for unminting`, rebate: totalFee });
+        res.json({ ok: true, message: `${mintingFee} credits returned for unminting`, rebate: mintingFee });
     } catch (error: any) {
         res.status(500).send("Failed to update asset");
     }
@@ -1207,10 +1166,11 @@ app.delete('/api/collection/:did', isAuthenticated, async (req: Request, res: Re
 
 app.get('/api/collection/:did', async (req: Request, res: Response) => {
     try {
+        const did = req.params.did;
         const currentDb = await db.loadDb();
         const users = currentDb.users || {};
 
-        const docs = await keymaster.resolveDID(req.params.did);
+        const docs = await keymaster.resolveDID(did);
         if (!docs) {
             res.status(404).send("DID not found");
             return;
@@ -1237,15 +1197,25 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
             did: collection.owner,
             ...profile,
         };
+        const isOwner = req.session?.user?.did === collection.owner;
 
         const assets = [];
         for (const assetId of collection.assets) {
             try {
                 const item = await keymaster.resolveAsset(assetId);
+
+                if (!isOwner && !item.minted) {
+                    // If the asset is not minted and the requester is not the owner, skip it
+                    // TBD: disable this feature for now, decide later
+                    // continue;
+                }
+
                 if (item) {
                     assets.push({
                         did: assetId,
-                        ...item,
+                        image: item.image,
+                        title: item.title,
+                        minted: !!item.minted,
                     });
                 }
             } catch (e) {
@@ -1254,6 +1224,7 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
         }
 
         const collectionDetails = {
+            did,
             name,
             owner,
             assets,

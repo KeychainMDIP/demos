@@ -33,7 +33,7 @@ function ViewAssetPfp({ asset, isAssetOwner, isCollectionOwner, onSave }: { asse
 
     async function setCollectionThumbnail() {
         try {
-            await api.patch(`/collection/${asset.collection.did}`, { thumbnail: did });
+            await api.patch(`/collection/${asset.matrix.collection}`, { thumbnail: did });
             onSave();
         }
         catch (error: any) {
