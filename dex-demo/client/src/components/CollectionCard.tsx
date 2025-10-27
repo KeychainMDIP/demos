@@ -9,7 +9,7 @@ function CollectionCard({ collection }: { collection: any }) {
         justifyContent: 'center',
         overflow: 'hidden',
         position: 'relative',
-        border: collection.sold ? '1px solid #0ff' : collection.published ? '1px solid #0f0' : '1px solid #ccc',
+        border: collection.sold ? '3px solid #0ff' : collection.published ? '3px solid #0f0' : '2px solid #ccc',
         borderRadius: '4px',
         padding: '8px',
     };

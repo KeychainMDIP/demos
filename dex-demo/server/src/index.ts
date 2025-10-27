@@ -1215,6 +1215,7 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
                         did: assetId,
                         image: item.image,
                         title: item.title,
+                        minted: !!item.minted,
                     });
                 }
             } catch (e) {
