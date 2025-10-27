@@ -1223,12 +1223,17 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
             }
         }
 
+        const showcasedCollections = currentDb.showcase?.collections || [];
+        const showcased = showcasedCollections.includes(did);
+        const published = collection.published;
+
         const collectionDetails = {
             did,
             name,
             owner,
             assets,
-            published: collection.published,
+            published,
+            showcased,
         };
 
         res.json({ collection: collectionDetails });
