@@ -1206,7 +1206,8 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
 
                 if (!isOwner && !item.minted) {
                     // If the asset is not minted and the requester is not the owner, skip it
-                    continue;
+                    // TBD: disable this feature for now, decide later
+                    // continue;
                 }
 
                 if (item) {
