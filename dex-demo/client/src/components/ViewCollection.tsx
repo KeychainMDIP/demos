@@ -165,6 +165,24 @@ function ViewCollection() {
         }
     }
 
+    async function showcaseCollection(showcase: boolean) {
+        try {
+            await api.post(`/showcase`, { collection: did, add: showcase });
+            if (showcase) {
+                showSnackbar(`Collection added to showcase successfully.`, 'success');
+            } else {
+                showSnackbar(`Collection removed from showcase successfully.`, 'success');
+            }
+            fetchCollection();
+        } catch (error: any) {
+            if (showcase) {
+                showSnackbarError(error, `Failed to add collection to showcase`);
+            } else {
+                showSnackbarError(error, `Failed to remove collection from showcase`);
+            }
+        }
+    }
+
     async function uploadAssets() {
         if (credits === 0) {
             showSnackbar('You have no credits to upload images. Please add credits first.', 'error');
@@ -344,6 +362,11 @@ function ViewCollection() {
                                 <MenuItem onClick={() => { handleMenuClose(); unpublishCollection(); }}>Unpublish collection</MenuItem>
                                 :
                                 <MenuItem onClick={() => { handleMenuClose(); publishCollection(); }}>Publish collection</MenuItem>
+                            }
+                            {collection.showcased ?
+                                <MenuItem onClick={() => { handleMenuClose(); showcaseCollection(false); }}>Remove from showcase</MenuItem>
+                                :
+                                <MenuItem onClick={() => { handleMenuClose(); showcaseCollection(true); }}>Add to showcase</MenuItem>
                             }
                         </Menu>
                     </Box>
