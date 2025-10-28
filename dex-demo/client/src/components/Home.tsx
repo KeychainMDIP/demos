@@ -33,13 +33,13 @@ function Home() {
     return (
         <Box sx={{ p: 3, textAlign: 'center' }}>
             <Typography variant="h4">Welcome, {auth.isAuthenticated ? (auth.profile?.name || auth.userDID) : "to the DID Exchange Demo"}</Typography>
+            {!auth.isAuthenticated && (
+                <Typography sx={{ mt: 2 }}>Login to upload image assets and mint limited editions (tokens) that can be collected and traded.</Typography>
+            )}
             <Typography variant="h5">Featured Collections</Typography>
             {showcase?.collections && showcase.collections.length > 0 &&
                 <CollectionGrid collections={showcase.collections} />
             }
-            {!auth.isAuthenticated && (
-                <Typography sx={{ mt: 2 }}>Please login to buy/sell DID assets.</Typography>
-            )}
         </Box>
     );
 }

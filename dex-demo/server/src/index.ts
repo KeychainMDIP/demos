@@ -1195,19 +1195,19 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
             }
         }
 
-        const profile = users[collection.owner] || { name: 'Unknown User' };
+        const profile = users[collection.owner] || { name: 'Anon' };
         const owner = {
             did: collection.owner,
-            ...profile,
+            name: profile.name || 'Anon',
         };
-        const isOwner = req.session?.user?.did === collection.owner;
+        const userIsOwner = req.session?.user?.did === collection.owner;
 
         const assets = [];
         for (const assetId of collection.assets) {
             try {
                 const item = await keymaster.resolveAsset(assetId);
 
-                if (!isOwner && !item.minted) {
+                if (!userIsOwner && !item.minted) {
                     // If the asset is not minted and the requester is not the owner, skip it
                     // TBD: disable this feature for now, decide later
                     // continue;
@@ -1237,6 +1237,7 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
             assets,
             published,
             showcased,
+            userIsOwner,
         };
 
         res.json({ collection: collectionDetails });

@@ -337,7 +337,7 @@ function ViewCollection() {
                     <Typography sx={{ fontSize: '2.0em' }}>{collection.name} by</Typography>
                     <UserBadge did={collection.owner.did} fontSize={'2.0em'} imgSize={'50px'} />
                 </Box>
-                {auth.userDID === collection.owner.did &&
+                {(collection.userIsOwner || auth.isAdmin) &&
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
                         <Button
                             variant="contained"
@@ -352,22 +352,27 @@ function ViewCollection() {
                             open={open}
                             onClose={handleMenuClose}
                         >
-                            <MenuItem onClick={() => { handleMenuClose(); addAsset(); }}>Add asset...</MenuItem>
-                            <MenuItem onClick={() => { handleMenuClose(); uploadAssets(); }}>Upload images...</MenuItem>
-                            <MenuItem onClick={() => { handleMenuClose(); renameCollection(); }}>Rename collection...</MenuItem>
-                            <MenuItem onClick={() => { handleMenuClose(); renameAssets(); }}>Rename assets...</MenuItem>
-                            <MenuItem onClick={() => { handleMenuClose(); sortAssets(); }}>Sort assets...</MenuItem>
-                            <MenuItem onClick={() => { handleMenuClose(); removeCollection(); }}>Remove collection...</MenuItem>
-                            {collection.published ?
-                                <MenuItem onClick={() => { handleMenuClose(); unpublishCollection(); }}>Unpublish collection</MenuItem>
-                                :
-                                <MenuItem onClick={() => { handleMenuClose(); publishCollection(); }}>Publish collection</MenuItem>
-                            }
-                            {collection.showcased ?
-                                <MenuItem onClick={() => { handleMenuClose(); showcaseCollection(false); }}>Remove from showcase</MenuItem>
-                                :
-                                <MenuItem onClick={() => { handleMenuClose(); showcaseCollection(true); }}>Add to showcase</MenuItem>
-                            }
+                            {collection.userIsOwner && (
+                                <>
+                                    <MenuItem onClick={() => { handleMenuClose(); addAsset(); }}>Add asset...</MenuItem>
+                                    <MenuItem onClick={() => { handleMenuClose(); uploadAssets(); }}>Upload images...</MenuItem>
+                                    <MenuItem onClick={() => { handleMenuClose(); renameCollection(); }}>Rename collection...</MenuItem>
+                                    <MenuItem onClick={() => { handleMenuClose(); renameAssets(); }}>Rename assets...</MenuItem>
+                                    <MenuItem onClick={() => { handleMenuClose(); sortAssets(); }}>Sort assets...</MenuItem>
+                                    <MenuItem onClick={() => { handleMenuClose(); removeCollection(); }}>Remove collection...</MenuItem>
+                                    {collection.published ?
+                                        <MenuItem onClick={() => { handleMenuClose(); unpublishCollection(); }}>Unpublish collection</MenuItem>
+                                        :
+                                        <MenuItem onClick={() => { handleMenuClose(); publishCollection(); }}>Publish collection</MenuItem>
+                                    }
+                                </>
+                            )}
+                            {auth.isAdmin && (
+                                collection.showcased ?
+                                    <MenuItem onClick={() => { handleMenuClose(); showcaseCollection(false); }}>Remove from showcase</MenuItem>
+                                    :
+                                    <MenuItem onClick={() => { handleMenuClose(); showcaseCollection(true); }}>Add to showcase</MenuItem>
+                            )}
                         </Menu>
                     </Box>
                 }
