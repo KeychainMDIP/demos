@@ -26,7 +26,7 @@ function Home() {
         };
 
         init();
-    }, [showSnackbar]);
+    }, [showSnackbar, api]);
 
     if (auth.loading) {
         return <Box sx={{ p: 3, textAlign: 'center' }}><Typography>Loading...</Typography></Box>;
