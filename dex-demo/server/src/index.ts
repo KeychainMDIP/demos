@@ -467,13 +467,18 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
             }
         }
 
+        const adminAccess = isUser || isAdmin;
+        const showcased = currentDb.showcase?.creators?.includes(did);
+
         const profile: User = {
-            ...(isUser || isAdmin ? rawProfile : { name: rawProfile.name, tagline: rawProfile.tagline }),
+            ...(adminAccess ? rawProfile : { name: rawProfile.name, tagline: rawProfile.tagline }),
             did,
             pfp,
             isUser,
+            adminAccess,
             collections,
             collected,
+            showcased,
         };
 
         res.json(profile);
@@ -1192,19 +1197,19 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
             }
         }
 
-        const profile = users[collection.owner] || { name: 'Unknown User' };
+        const profile = users[collection.owner] || { name: 'Anon' };
         const owner = {
             did: collection.owner,
-            ...profile,
+            name: profile.name || 'Anon',
         };
-        const isOwner = req.session?.user?.did === collection.owner;
+        const userIsOwner = req.session?.user?.did === collection.owner;
 
         const assets = [];
         for (const assetId of collection.assets) {
             try {
                 const item = await keymaster.resolveAsset(assetId);
 
-                if (!isOwner && !item.minted) {
+                if (!userIsOwner && !item.minted) {
                     // If the asset is not minted and the requester is not the owner, skip it
                     // TBD: disable this feature for now, decide later
                     // continue;
@@ -1223,12 +1228,18 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
             }
         }
 
+        const showcasedCollections = currentDb.showcase?.collections || [];
+        const showcased = showcasedCollections.includes(did);
+        const published = collection.published;
+
         const collectionDetails = {
             did,
             name,
             owner,
             assets,
-            published: collection.published,
+            published,
+            showcased,
+            userIsOwner,
         };
 
         res.json({ collection: collectionDetails });
@@ -1570,6 +1581,177 @@ app.post('/api/add-credits', isAuthenticated, async (req: Request, res: Response
         });
     } catch (error: any) {
         res.status(500).send("Failed to add credits");
+    }
+});
+
+app.post('/api/showcase', isAdmin, async (req: Request, res: Response) => {
+    try {
+        const { collection, creator, add } = req.body;
+
+        // Ensure add is defined and is a boolean
+        const addToShowcase = Boolean(add);
+        const currentDb = await db.loadDb();
+
+        if (!currentDb.showcase) {
+            currentDb.showcase = { collections: [], creators: [] };
+        }
+
+        if (collection) {
+            if (typeof collection !== 'string') {
+                res.status(400).send('Invalid collection DID');
+                return;
+            }
+
+            try {
+                const asset = await keymaster.resolveAsset(collection);
+
+                if (!asset || !asset.collection) {
+                    res.status(400).send("Invalid collection DID");
+                    return;
+                }
+            }
+            catch (error) {
+                res.status(400).send("Invalid collection DID");
+                return;
+            }
+
+            let collections = currentDb.showcase.collections || [];
+
+            if (addToShowcase) {
+                if (!collections.includes(collection)) {
+                    collections.push(collection);
+                }
+            } else {
+                collections = collections.filter(c => c !== collection);
+            }
+
+            currentDb.showcase.collections = collections;
+        }
+
+        if (creator) {
+            const users = currentDb.users || {};
+
+            if (!users[creator]) {
+                res.status(400).send('Invalid creator DID');
+                return;
+            }
+
+            let creators = currentDb.showcase.creators || [];
+
+            if (addToShowcase) {
+                if (!creators.includes(creator)) {
+                    creators.push(creator);
+                }
+            } else {
+                creators = creators.filter(c => c !== creator);
+            }
+
+            currentDb.showcase.creators = creators;
+        }
+
+        db.writeDb(currentDb);
+
+        res.json({
+            ok: true,
+            message: 'Showcase updated successfully',
+        });
+    } catch (error: any) {
+        res.status(500).send("Failed to update showcase");
+    }
+});
+
+app.get('/api/showcase', async (_, res) => {
+    try {
+        const currentDb = await db.loadDb();
+
+        if (!currentDb.showcase) {
+            currentDb.showcase = { collections: [], creators: [] };
+        }
+
+        const collections: any[] = [];
+        const creators: any[] = [];
+
+        for (const collectionId of currentDb.showcase.collections || []) {
+            try {
+                const { collection, name } = await keymaster.resolveAsset(collectionId);
+                if (collection) {
+                    if (!collection.published) {
+                        continue;
+                    }
+
+                    const thumbnail = {
+                        did: collection.thumbnail || currentDb.settings?.thumbnail,
+                        cid: undefined,
+                    };
+
+                    if (thumbnail.did) {
+                        const thumbAsset = await keymaster.resolveAsset(thumbnail.did);
+                        if (thumbAsset && thumbAsset.image) {
+                            thumbnail.cid = thumbAsset.image.cid;
+                        }
+                    }
+
+                    collections.push({
+                        did: collectionId,
+                        name,
+                        items: collection.assets.length,
+                        thumbnail,
+                        published: collection.published,
+                    });
+                }
+            } catch (e) {
+                console.log(`Failed to resolve collection ${collectionId}: ${e}`);
+            }
+        }
+
+        for (const creatorId of currentDb.showcase.creators || []) {
+            try {
+                const users = currentDb.users || {};
+                const profile = users[creatorId] || { name: 'Anon' };
+
+                const pfp = {
+                    did: profile.pfp || currentDb.settings?.pfp,
+                    cid: undefined,
+                };
+
+                if (pfp.did) {
+                    try {
+                        const pfpAsset = await keymaster.resolveAsset(pfp.did);
+                        if (pfpAsset && pfpAsset.image) {
+                            pfp.cid = pfpAsset.image.cid;
+                        }
+                    } catch (e) {
+                        console.log(`Failed to resolve profile picture ${pfp.did}: ${e}`);
+                    }
+                }
+
+                // count the number of published collections by this creator
+                let collections = 0;
+                for (const collectionId of profile.assets.collections || []) {
+                    try {
+                        const { collection } = await keymaster.resolveAsset(collectionId);
+                        if (collection && collection.published) {
+                            collections++;
+                        }
+                    } catch (e) {
+                        console.log(`Failed to resolve collection ${collectionId} for creator ${creatorId}: ${e}`);
+                    }
+                }
+
+                creators.push({
+                    did: creatorId,
+                    name: profile.name || 'Anon',
+                    pfp,
+                    collections,
+                });
+            } catch (e) {
+                console.log(`Failed to resolve creator ${creatorId}: ${e}`);
+            }
+        }
+
+        res.json({ showcase: { collections, creators } });
+    } catch (error: any) {
+        res.status(500).send(error.toString());
     }
 });
 

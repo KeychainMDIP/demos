@@ -30,7 +30,7 @@ function ViewSettings() {
             const getProfile = await api.get(`/profile/${did}`);
             const profile = getProfile.data;
 
-            if (!profile?.credits) {
+            if (!profile?.adminAccess) {
                 showSnackbar("No access to this profile", "error");
                 navigate('/');
             }

@@ -55,10 +55,9 @@ function ViewAsset() {
             if (asset.matrix?.collection) {
                 const getCollection = await api.get(`/collection/${asset.matrix.collection}`);
                 const { collection } = getCollection.data;
-                const isCollectionOwner = auth.isAuthenticated && auth.userDID === collection.owner.did;
 
                 setCollection(collection);
-                setIsCollectionOwner(isCollectionOwner);
+                setIsCollectionOwner(collection.userIsOwner);
 
                 const list = (collection.assets || []).map((a: any) => a.did);
 
