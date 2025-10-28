@@ -62,6 +62,23 @@ function ViewProfile() {
         }
     }
 
+    async function showcaseCreator(showcase: boolean) {
+        try {
+            await api.post(`/showcase`, { creator: did, add: showcase });
+            if (showcase) {
+                showSnackbar(`Creator added to showcase successfully.`, 'success');
+            } else {
+                showSnackbar(`Creator removed from showcase successfully.`, 'success');
+            }
+        } catch (error: any) {
+            if (showcase) {
+                showSnackbarError(error, `Failed to add creator to showcase`);
+            } else {
+                showSnackbarError(error, `Failed to remove creator from showcase`);
+            }
+        }
+    }
+
     return (
         <Box sx={{ width: '100%', p: 3 }}>
             <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
@@ -98,13 +115,24 @@ function ViewProfile() {
             </Tabs>
             {tab === 'collections' &&
                 <Box sx={{ width: '100%', p: 3 }}>
-                    {auth.userDID === did &&
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                        {auth.userDID === did &&
                             <Button variant="contained" color="primary" onClick={addCollection}>
                                 Add collection...
                             </Button>
-                        </Box>
-                    }
+                        }
+                        {auth.isAdmin && (
+                            profile.showcased ? (
+                                <Button variant="contained" color="primary" onClick={() => showcaseCreator(false)}>
+                                    Remove from showcase
+                                </Button>
+                            ) : (
+                                <Button variant="contained" color="primary" onClick={() => showcaseCreator(true)}>
+                                    Add to showcase
+                                </Button>
+                            )
+                        )}
+                    </Box>
                     <CollectionGrid collections={profile.collections} />
                 </Box>
             }

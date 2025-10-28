@@ -468,6 +468,7 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
         }
 
         const adminAccess = isUser || isAdmin;
+        const showcased = currentDb.showcase?.creators?.includes(did);
 
         const profile: User = {
             ...(adminAccess ? rawProfile : { name: rawProfile.name, tagline: rawProfile.tagline }),
@@ -477,6 +478,7 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
             adminAccess,
             collections,
             collected,
+            showcased,
         };
 
         res.json(profile);
@@ -1584,18 +1586,18 @@ app.post('/api/add-credits', isAuthenticated, async (req: Request, res: Response
 
 app.post('/api/showcase', isAdmin, async (req: Request, res: Response) => {
     try {
-        const { collection, add } = req.body;
+        const { collection, creator, add } = req.body;
 
         // Ensure add is defined and is a boolean
         const addToShowcase = Boolean(add);
         const currentDb = await db.loadDb();
 
         if (!currentDb.showcase) {
-            currentDb.showcase = { collections: [] };
+            currentDb.showcase = { collections: [], creators: [] };
         }
 
         if (collection) {
-            if (!collection || typeof collection !== 'string') {
+            if (typeof collection !== 'string') {
                 res.status(400).json({ message: 'Invalid collection DID' });
                 return;
             }
@@ -1626,6 +1628,27 @@ app.post('/api/showcase', isAdmin, async (req: Request, res: Response) => {
             currentDb.showcase.collections = collections;
         }
 
+        if (creator) {
+            const users = currentDb.users || {};
+
+            if (!users[creator]) {
+                res.status(400).json({ message: 'Invalid creator DID' });
+                return;
+            }
+
+            let creators = currentDb.showcase.creators || [];
+
+            if (addToShowcase) {
+                if (!creators.includes(creator)) {
+                    creators.push(creator);
+                }
+            } else {
+                creators = creators.filter(c => c !== creator);
+            }
+
+            currentDb.showcase.creators = creators;
+        }
+
         db.writeDb(currentDb);
 
         res.json({
@@ -1642,10 +1665,11 @@ app.get('/api/showcase', async (_, res) => {
         const currentDb = await db.loadDb();
 
         if (!currentDb.showcase) {
-            currentDb.showcase = { collections: [] };
+            currentDb.showcase = { collections: [], creators: [] };
         }
 
         const collections: any[] = [];
+        const creators: any[] = [];
 
         for (const collectionId of currentDb.showcase.collections || []) {
             try {
@@ -1680,7 +1704,52 @@ app.get('/api/showcase', async (_, res) => {
             }
         }
 
-        res.json({ showcase: { collections } });
+        for (const creatorId of currentDb.showcase.creators || []) {
+            try {
+                const users = currentDb.users || {};
+                const profile = users[creatorId] || { name: 'Anon' };
+
+                const pfp = {
+                    did: profile.pfp || currentDb.settings?.pfp,
+                    cid: undefined,
+                };
+
+                if (pfp.did) {
+                    try {
+                        const pfpAsset = await keymaster.resolveAsset(pfp.did);
+                        if (pfpAsset && pfpAsset.image) {
+                            pfp.cid = pfpAsset.image.cid;
+                        }
+                    } catch (e) {
+                        console.log(`Failed to resolve profile picture ${pfp.did}: ${e}`);
+                    }
+                }
+
+                // count the number of published collections by this creator
+                let collections = 0;
+                for (const collectionId of profile.assets.collections || []) {
+                    try {
+                        const { collection } = await keymaster.resolveAsset(collectionId);
+                        if (collection && collection.published) {
+                            collections++;
+                        }
+                    } catch (e) {
+                        console.log(`Failed to resolve collection ${collectionId} for creator ${creatorId}: ${e}`);
+                    }
+                }
+
+                creators.push({
+                    did: creatorId,
+                    name: profile.name || 'Anon',
+                    pfp,
+                    collections,
+                });
+            } catch (e) {
+                console.log(`Failed to resolve creator ${creatorId}: ${e}`);
+            }
+        }
+
+        res.json({ showcase: { collections, creators } });
     } catch (error: any) {
         res.status(404).send(error.toString());
     }

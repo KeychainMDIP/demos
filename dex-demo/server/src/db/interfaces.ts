@@ -12,6 +12,7 @@ export interface DatabaseStructure {
     users?: Record<string, User>;
     showcase?: {
         collections: string[];
+        creators: string[];
     };
     [key: string]: any;
 }
