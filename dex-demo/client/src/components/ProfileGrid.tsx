@@ -11,8 +11,8 @@ function ProfileGrid({ profiles }: { profiles: any[] }) {
     return (
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center' }}>
             {profiles.map((profile, index) => (
-                <Link key={index} to={`/profile/${profile.did}`} style={{ margin: '8px', textDecoration: 'none' }}>
-                    <ProfileCard key={index} profile={profile} />
+                <Link key={profile.did} to={`/profile/${profile.did}`} style={{ margin: '8px', textDecoration: 'none' }}>
+                    <ProfileCard key={profile.did} profile={profile} />
                 </Link>
             ))}
         </div>
