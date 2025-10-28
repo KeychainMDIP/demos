@@ -1751,7 +1751,7 @@ app.get('/api/showcase', async (_, res) => {
 
         res.json({ showcase: { collections, creators } });
     } catch (error: any) {
-        res.status(404).send(error.toString());
+        res.status(500).send(error.toString());
     }
 });
 
