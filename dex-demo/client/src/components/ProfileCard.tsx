@@ -9,7 +9,7 @@ function ProfileCard({ profile }: { profile: any }) {
         justifyContent: 'center',
         overflow: 'hidden',
         position: 'relative',
-        border: '2px solid #ccc',
+        border: '3px solid #00f',
         borderRadius: '4px',
         padding: '8px',
     };

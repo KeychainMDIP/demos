@@ -1598,7 +1598,7 @@ app.post('/api/showcase', isAdmin, async (req: Request, res: Response) => {
 
         if (collection) {
             if (typeof collection !== 'string') {
-                res.status(400).json({ message: 'Invalid collection DID' });
+                res.status(400).send('Invalid collection DID');
                 return;
             }
 
@@ -1632,7 +1632,7 @@ app.post('/api/showcase', isAdmin, async (req: Request, res: Response) => {
             const users = currentDb.users || {};
 
             if (!users[creator]) {
-                res.status(400).json({ message: 'Invalid creator DID' });
+                res.status(400).send('Invalid creator DID');
                 return;
             }
 
