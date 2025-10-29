@@ -284,7 +284,7 @@ app.get('/api/login', cors(corsOptions), async (req: Request, res: Response) => 
     try {
         const { response } = req.query;
         if (typeof response !== 'string') {
-            res.status(400).json({ error: 'Missing or invalid response param' });
+            res.status(400).send('Missing or invalid response param');
             return;
         }
         const verify = await loginUser(response);
@@ -541,7 +541,7 @@ app.patch('/api/profile/:did', isAuthenticated, async (req: Request, res: Respon
         const { name, tagline, pfp } = req.body;
 
         if (!req.session.user || req.session.user.did !== did) {
-            res.status(403).json({ message: 'Forbidden' });
+            res.status(403).send('Forbidden');
             return;
         }
 
@@ -724,7 +724,7 @@ app.patch('/api/asset/:did', isAuthenticated, async (req: Request, res: Response
         const owner = asset.matrix?.owner || asset.token?.owner;
 
         if (!req.session.user || req.session.user.did !== owner) {
-            res.status(403).json({ message: 'Forbidden' });
+            res.status(403).send('Forbidden');
             return;
         }
 
@@ -850,7 +850,7 @@ app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Resp
         const owner = asset.matrix?.owner;
 
         if (!req.session.user || req.session.user.did !== owner) {
-            res.status(403).json({ message: 'Forbidden' });
+            res.status(403).send('Forbidden');
             return;
         }
 
@@ -937,7 +937,7 @@ app.post('/api/asset/:did/unmint', isAuthenticated, async (req: Request, res: Re
         const owner = asset.matrix?.owner;
 
         if (!req.session.user || req.session.user.did !== owner) {
-            res.status(403).json({ message: 'Forbidden' });
+            res.status(403).send('Forbidden');
             return;
         }
 
@@ -1001,7 +1001,7 @@ app.post('/api/asset/:did/buy', isAuthenticated, async (req: Request, res: Respo
         }
 
         if (!req.session.user?.did) {
-            res.status(403).json({ message: 'Forbidden' });
+            res.status(403).send('Forbidden');
             return;
         }
 
@@ -1145,14 +1145,14 @@ app.post('/api/asset/:did/buy', isAuthenticated, async (req: Request, res: Respo
 app.post('/api/collection', isAuthenticated, async (req: Request, res: Response) => {
     try {
         if (!req.session.user?.did) {
-            res.status(403).json({ message: 'Forbidden' });
+            res.status(403).send('Forbidden');
             return;
         }
 
         const { name } = req.body;
 
         if (!name || typeof name !== 'string' || name.trim().length === 0) {
-            res.status(400).json({ message: 'Collection name is required' });
+            res.status(400).send('Collection name is required');
             return;
         }
 
@@ -1161,7 +1161,7 @@ app.post('/api/collection', isAuthenticated, async (req: Request, res: Response)
         const users = currentDb.users || {};
 
         if (!users[did]) {
-            res.status(404).json({ message: 'User not found' });
+            res.status(404).send('User not found');
             return;
         }
 
@@ -1178,7 +1178,7 @@ app.post('/api/collection', isAuthenticated, async (req: Request, res: Response)
 app.delete('/api/collection/:did', isAuthenticated, async (req: Request, res: Response) => {
     try {
         if (!req.session.user?.did) {
-            res.status(403).json({ message: 'Forbidden' });
+            res.status(403).send('Forbidden');
             return;
         }
 
@@ -1303,7 +1303,7 @@ app.patch('/api/collection/:did', isAuthenticated, async (req: Request, res: Res
         const isAdmin = await requestorIsAdmin(req);
 
         if (!isOwner && !isAdmin) {
-            res.status(403).json({ message: 'Forbidden' });
+            res.status(403).send('Forbidden');
             return;
         }
 
@@ -1588,14 +1588,14 @@ app.get('/api/ipfs/:cid', async (req, res) => {
 app.post('/api/add-credits', isAuthenticated, async (req: Request, res: Response) => {
     try {
         if (!req.session.user?.did) {
-            res.status(403).json({ message: 'Forbidden' });
+            res.status(403).send('Forbidden');
             return;
         }
 
         const { amount } = req.body;
 
         if (!amount || typeof amount !== 'number' || amount <= 0) {
-            res.status(400).json({ message: 'Valid amount is required' });
+            res.status(400).send('Valid amount is required');
             return;
         }
 
@@ -1604,7 +1604,7 @@ app.post('/api/add-credits', isAuthenticated, async (req: Request, res: Response
         const users = currentDb.users || {};
 
         if (!users[did]) {
-            res.status(404).json({ message: 'User not found' });
+            res.status(404).send('User not found');
             return;
         }
 
