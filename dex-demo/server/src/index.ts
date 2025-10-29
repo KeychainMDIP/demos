@@ -101,6 +101,26 @@ function isAdmin(req: Request, res: Response, next: NextFunction): void {
     });
 }
 
+async function requestorIsAdmin(req: Request): Promise<boolean> {
+    if (!req.session.user?.did) {
+        return false;
+    }
+
+    const userDID = req.session.user.did;
+    const currentDb = await db.loadDb();
+    const users = currentDb.users || {};
+    const user = users[userDID];
+
+    if (!user) {
+        return false;
+    }
+
+    const isOwner = userDID === OWNER_DID;
+    const isAdmin = user.role === 'Admin' || isOwner;
+
+    return isAdmin;
+}
+
 async function loginUser(response: string): Promise<any> {
     const verify = await keymaster.verifyResponse(response, { retries: 10 });
 
@@ -386,7 +406,7 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
         const rawProfile = currentDb.users[did];
         const userDID = req.session.user?.did;
         const isUser = (userDID === did);
-        const isAdmin = (userDID === OWNER_DID) || (userDID && currentDb.users && currentDb.users[userDID]?.role === 'Admin');
+        const isAdmin = await requestorIsAdmin(req);
         const collections: any[] = [];
         const collected: any[] = [];
 
@@ -416,6 +436,7 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
                         items: collection.assets.length,
                         thumbnail,
                         published: collection.published,
+                        contentRating: collection.contentRating,
                     });
                 }
             } catch (e) {
@@ -1191,7 +1212,7 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
         // If collection is not published and requester is not the owner, return 404
         if (!collection.published) {
             const requesterDID = req.session?.user?.did;
-            if (requesterDID !== collection.owner) {
+            if (requesterDID !== collection.owner && !(await requestorIsAdmin(req))) {
                 res.status(404).send("DID not found");
                 return;
             }
@@ -1251,7 +1272,7 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
 app.patch('/api/collection/:did', isAuthenticated, async (req: Request, res: Response) => {
     try {
         const did = req.params.did;
-        const { name, thumbnail, published } = req.body;
+        const { name, thumbnail, published, contentRating } = req.body;
 
         const data = await keymaster.resolveAsset(did);
 
@@ -1265,7 +1286,11 @@ app.patch('/api/collection/:did', isAuthenticated, async (req: Request, res: Res
             return;
         }
 
-        if (!req.session.user || req.session.user.did !== data.collection.owner) {
+        const userDID = req.session.user?.did;
+        const isOwner = (userDID === data.collection.owner);
+        const isAdmin = await requestorIsAdmin(req);
+
+        if (!isOwner && !isAdmin) {
             res.status(403).json({ message: 'Forbidden' });
             return;
         }
@@ -1280,6 +1305,10 @@ app.patch('/api/collection/:did', isAuthenticated, async (req: Request, res: Res
 
         if (published !== undefined) {
             data.collection.published = published;
+        }
+
+        if (contentRating !== undefined) {
+            data.collection.contentRating = contentRating;
         }
 
         await keymaster.updateAsset(did, data);
@@ -1671,6 +1700,18 @@ app.get('/api/showcase', async (_, res) => {
         const collections: any[] = [];
         const creators: any[] = [];
 
+        const maxRating = 'G';
+
+        function isRatingAllowed(rating: string): boolean {
+            const ratings = ['G', 'T', 'M', 'X'];
+
+            if (!ratings.includes(rating)) {
+                return false;
+            }
+
+            return ratings.indexOf(rating) <= ratings.indexOf(maxRating);
+        }
+
         for (const collectionId of currentDb.showcase.collections || []) {
             try {
                 const { collection, name } = await keymaster.resolveAsset(collectionId);
@@ -1697,6 +1738,7 @@ app.get('/api/showcase', async (_, res) => {
                         items: collection.assets.length,
                         thumbnail,
                         published: collection.published,
+                        contentRating: collection.contentRating,
                     });
                 }
             } catch (e) {
@@ -1730,7 +1772,7 @@ app.get('/api/showcase', async (_, res) => {
                 for (const collectionId of profile.assets.collections || []) {
                     try {
                         const { collection } = await keymaster.resolveAsset(collectionId);
-                        if (collection && collection.published) {
+                        if (collection && collection.published && isRatingAllowed(collection.contentRating)) {
                             collections++;
                         }
                     } catch (e) {

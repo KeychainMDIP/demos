@@ -4,7 +4,7 @@ import { useDropzone } from 'react-dropzone';
 import { useSnackbar } from "../contexts/SnackbarContext.js";
 import { useAuth } from "../contexts/AuthContext";
 import { useApi } from "../contexts/ApiContext.js";
-import { Box, Button, Menu, MenuItem, Modal, Typography } from "@mui/material";
+import { Box, Button, Menu, MenuItem, Modal, Select, Typography } from "@mui/material";
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import AssetGrid from "./AssetGrid.js";
 import UserBadge from "./UserBadge.js";
@@ -23,6 +23,9 @@ function ViewCollection() {
     const [uploadResults, setUploadResults] = useState<any>(null);
     const [uploadWarnings, setUploadWarnings] = useState<any>(null);
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const [publishModalOpen, setPublishModalOpen] = useState(false);
+    const [contentRating, setContentRating] = useState('');
+
     const open = Boolean(anchorEl);
 
     async function fetchCollection() {
@@ -147,7 +150,7 @@ function ViewCollection() {
 
     async function publishCollection() {
         try {
-            await api.patch(`/collection/${did}`, { published: true });
+            await api.patch(`/collection/${did}`, { published: true, contentRating });
             showSnackbar('Collection published successfully.', 'success');
             fetchCollection();
         } catch (error: any) {
@@ -326,8 +329,22 @@ function ViewCollection() {
     const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
         setAnchorEl(event.currentTarget);
     };
+
     const handleMenuClose = () => {
         setAnchorEl(null);
+    };
+
+    const modalStyle = {
+        position: 'absolute' as const,
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: 400,
+        bgcolor: 'background.paper',
+        border: '2px solid #1976d2',
+        boxShadow: 24,
+        p: 4,
+        borderRadius: 2,
     };
 
     return (
@@ -360,12 +377,13 @@ function ViewCollection() {
                                     <MenuItem onClick={() => { handleMenuClose(); renameAssets(); }}>Rename assets...</MenuItem>
                                     <MenuItem onClick={() => { handleMenuClose(); sortAssets(); }}>Sort assets...</MenuItem>
                                     <MenuItem onClick={() => { handleMenuClose(); removeCollection(); }}>Remove collection...</MenuItem>
-                                    {collection.published ?
-                                        <MenuItem onClick={() => { handleMenuClose(); unpublishCollection(); }}>Unpublish collection</MenuItem>
-                                        :
-                                        <MenuItem onClick={() => { handleMenuClose(); publishCollection(); }}>Publish collection</MenuItem>
-                                    }
                                 </>
+                            )}
+                            {(collection.userIsOwner || auth.isAdmin) && (
+                                collection.published ?
+                                    <MenuItem onClick={() => { handleMenuClose(); unpublishCollection(); }}>Unpublish collection</MenuItem>
+                                    :
+                                    <MenuItem onClick={() => { handleMenuClose(); setPublishModalOpen(true); }}>Publish collection</MenuItem>
                             )}
                             {auth.isAdmin && (
                                 collection.showcased ?
@@ -423,6 +441,33 @@ function ViewCollection() {
                         </Button>
                     </Box>
                 </div>
+            </Modal>
+            <Modal open={publishModalOpen} onClose={() => setPublishModalOpen(false)}>
+                <Box sx={{ ...modalStyle }}>
+                    <Typography>Select content rating:</Typography>
+                    <Select
+                        value={contentRating}
+                        onChange={e => setContentRating(e.target.value)}
+                        fullWidth
+                    >
+                        <MenuItem value="G">General (G) - Suitable for all audiences</MenuItem>
+                        <MenuItem value="T">Teen (T) - Suitable for ages 13 and older</MenuItem>
+                        <MenuItem value="M">Mature (M) - Suitable for ages 17 and older</MenuItem>
+                        <MenuItem value="X">Explicit (X) - Suitable for adults only</MenuItem>
+                    </Select>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        disabled={!contentRating}
+                        onClick={() => {
+                            publishCollection();
+                            setPublishModalOpen(false);
+                        }}
+                        sx={{ mt: 2 }}
+                    >
+                        Publish
+                    </Button>
+                </Box>
             </Modal>
         </>
     )

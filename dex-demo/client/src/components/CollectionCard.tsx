@@ -11,7 +11,7 @@ function CollectionCard({ collection }: { collection: any }) {
         position: 'relative',
         border: collection.sold ? '3px solid #0ff' : collection.published ? '3px solid #0f0' : '2px solid #ccc',
         borderRadius: '4px',
-        padding: '8px',
+        padding: '2px',
     };
 
     const imgContainerStyle: React.CSSProperties = {
@@ -38,13 +38,21 @@ function CollectionCard({ collection }: { collection: any }) {
         color: '#000',
     };
 
+    const textStyle: React.CSSProperties = {
+        marginTop: 0,
+        marginBottom: 0,
+        fontSize: '14px',
+        color: '#000',
+    };
+
     return (
         <div style={cardStyle}>
             <div style={imgContainerStyle}>
                 <img src={`/api/ipfs/${collection.thumbnail.cid}`} style={imgStyle} alt={collection.name} />
             </div>
             <p style={titleStyle}>{collection.name}</p>
-            <p style={titleStyle}>{collection.items} items</p>
+            <p style={textStyle}>{collection.items} items</p>
+            <p style={textStyle}>rated: {collection.contentRating || '?'}</p>
         </div>
     );
 };
