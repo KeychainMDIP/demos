@@ -196,6 +196,29 @@ async function createCollection(name: string, owner: string): Promise<string> {
     return collectionDID;
 }
 
+function addTransaction(user: User, txn: any): void {
+    const balance = (user.credits || 0) + txn.credits;
+    const time = new Date().toISOString();
+
+    user.credits = balance;
+
+    if (!user.transactions) {
+        user.transactions = [];
+    }
+
+    user.transactions.push({ ...txn, balance, time });
+}
+
+function isRatingAllowed(rating: string, maxRating: string): boolean {
+    const ratings = ['G', 'T', 'M', 'X'];
+
+    if (!ratings.includes(rating) || !ratings.includes(maxRating)) {
+        return false;
+    }
+
+    return ratings.indexOf(rating) <= ratings.indexOf(maxRating);
+}
+
 const corsOptions = {
     origin: process.env.DEX_CORS_SITE_ORIGIN || 'http://localhost:3009', // Origin needs to be specified with credentials true
     methods: ['DELETE', 'GET', 'POST', 'PUT'],  // Specify which methods are allowed (e.g., GET, POST)
@@ -415,6 +438,12 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
                 const { collection, name } = await keymaster.resolveAsset(collectionId);
                 if (collection) {
                     if (!isUser && !collection.published) {
+                        continue;
+                    }
+
+                    const maxRating = 'G';
+
+                    if (!isRatingAllowed(collection.contentRating, maxRating)) {
                         continue;
                     }
 
@@ -794,19 +823,6 @@ app.post('/api/asset/:did/move', isAuthenticated, async (req: Request, res: Resp
         res.status(500).send("Failed to move asset");
     }
 });
-
-function addTransaction(user: User, txn: any): void {
-    const balance = (user.credits || 0) + txn.credits;
-    const time = new Date().toISOString();
-
-    user.credits = balance;
-
-    if (!user.transactions) {
-        user.transactions = [];
-    }
-
-    user.transactions.push({ ...txn, balance, time });
-}
 
 app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Response) => {
     try {
@@ -1702,16 +1718,6 @@ app.get('/api/showcase', async (_, res) => {
 
         const maxRating = 'G';
 
-        function isRatingAllowed(rating: string): boolean {
-            const ratings = ['G', 'T', 'M', 'X'];
-
-            if (!ratings.includes(rating)) {
-                return false;
-            }
-
-            return ratings.indexOf(rating) <= ratings.indexOf(maxRating);
-        }
-
         for (const collectionId of currentDb.showcase.collections || []) {
             try {
                 const { collection, name } = await keymaster.resolveAsset(collectionId);
@@ -1772,7 +1778,7 @@ app.get('/api/showcase', async (_, res) => {
                 for (const collectionId of profile.assets.collections || []) {
                     try {
                         const { collection } = await keymaster.resolveAsset(collectionId);
-                        if (collection && collection.published && isRatingAllowed(collection.contentRating)) {
+                        if (collection && collection.published && isRatingAllowed(collection.contentRating, maxRating)) {
                             collections++;
                         }
                     } catch (e) {
