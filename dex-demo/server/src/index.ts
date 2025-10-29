@@ -428,6 +428,8 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
 
         const rawProfile = currentDb.users[did];
         const userDID = req.session.user?.did;
+        const userProfile = userDID ? currentDb.users[userDID] : undefined;
+        const maxContentRating = userProfile?.maxContentRating || 'G';
         const isUser = (userDID === did);
         const isAdmin = await requestorIsAdmin(req);
         const collections: any[] = [];
@@ -437,13 +439,7 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
             try {
                 const { collection, name } = await keymaster.resolveAsset(collectionId);
                 if (collection) {
-                    if (!isUser && !collection.published) {
-                        continue;
-                    }
-
-                    const maxRating = 'G';
-
-                    if (!isRatingAllowed(collection.contentRating, maxRating)) {
+                    if (!isUser && (!collection.published || !isRatingAllowed(collection.contentRating, maxContentRating))) {
                         continue;
                     }
 
@@ -1705,7 +1701,7 @@ app.post('/api/showcase', isAdmin, async (req: Request, res: Response) => {
     }
 });
 
-app.get('/api/showcase', async (_, res) => {
+app.get('/api/showcase', async (req, res) => {
     try {
         const currentDb = await db.loadDb();
 
@@ -1716,13 +1712,16 @@ app.get('/api/showcase', async (_, res) => {
         const collections: any[] = [];
         const creators: any[] = [];
 
-        const maxRating = 'G';
+        const userDID = req.session.user?.did;
+        const users = currentDb.users || {};
+        const userProfile = userDID ? users[userDID] : undefined;
+        const maxContentRating = userProfile?.maxContentRating || 'G';
 
         for (const collectionId of currentDb.showcase.collections || []) {
             try {
                 const { collection, name } = await keymaster.resolveAsset(collectionId);
                 if (collection) {
-                    if (!collection.published) {
+                    if (!collection.published || !isRatingAllowed(collection.contentRating, maxContentRating)) {
                         continue;
                     }
 
@@ -1778,7 +1777,7 @@ app.get('/api/showcase', async (_, res) => {
                 for (const collectionId of profile.assets.collections || []) {
                     try {
                         const { collection } = await keymaster.resolveAsset(collectionId);
-                        if (collection && collection.published && isRatingAllowed(collection.contentRating, maxRating)) {
+                        if (collection && collection.published && isRatingAllowed(collection.contentRating, maxContentRating)) {
                             collections++;
                         }
                     } catch (e) {

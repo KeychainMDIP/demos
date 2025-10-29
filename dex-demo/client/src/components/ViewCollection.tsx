@@ -381,9 +381,12 @@ function ViewCollection() {
                             )}
                             {(collection.userIsOwner || auth.isAdmin) && (
                                 collection.published ?
-                                    <MenuItem onClick={() => { handleMenuClose(); unpublishCollection(); }}>Unpublish collection</MenuItem>
+                                    <>
+                                        <MenuItem onClick={() => { handleMenuClose(); setPublishModalOpen(true); }}>Rate collection...</MenuItem>
+                                        <MenuItem onClick={() => { handleMenuClose(); unpublishCollection(); }}>Unpublish collection</MenuItem>
+                                    </>
                                     :
-                                    <MenuItem onClick={() => { handleMenuClose(); setPublishModalOpen(true); }}>Publish collection</MenuItem>
+                                    <MenuItem onClick={() => { handleMenuClose(); setPublishModalOpen(true); }}>Publish collection...</MenuItem>
                             )}
                             {auth.isAdmin && (
                                 collection.showcased ?
