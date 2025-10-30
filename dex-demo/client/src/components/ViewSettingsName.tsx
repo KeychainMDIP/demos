@@ -134,7 +134,7 @@ function ViewSettingsName({ profile, onSave }: { profile: any; onSave: () => voi
                                         onChange={(e) => setNewTagline(e.target.value)}
                                         slotProps={{
                                             htmlInput: {
-                                                maxLength: 20,
+                                                maxLength: 32,
                                             },
                                         }}
                                         sx={{ width: 300 }}

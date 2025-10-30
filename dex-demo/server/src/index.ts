@@ -549,7 +549,7 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
 app.patch('/api/profile/:did', isAuthenticated, async (req: Request, res: Response) => {
     try {
         const did = req.params.did;
-        const { name, tagline, pfp } = req.body;
+        const { name, tagline, pfp, maxContentRating } = req.body;
 
         if (!req.session.user || req.session.user.did !== did) {
             res.status(403).send('Forbidden');
@@ -572,6 +572,10 @@ app.patch('/api/profile/:did', isAuthenticated, async (req: Request, res: Respon
 
         if (pfp !== undefined) {
             currentDb.users[did].pfp = pfp;
+        }
+
+        if (maxContentRating !== undefined) {
+            currentDb.users[did].maxContentRating = maxContentRating;
         }
 
         db.writeDb(currentDb);
