@@ -1,8 +1,24 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useSnackbar } from "../contexts/SnackbarContext.js";
+import { useApi } from "../contexts/ApiContext.js";
 import { formatDate } from "../utils.js";
 import { Box, Table, TableBody, TableCell, TableRow } from "@mui/material";
 
-function ViewSettingsLogin({ profile }: { profile: any }) {
+function ViewSettingsPreferences({ profile, onSave }: { profile: any; onSave: () => void }) {
+    const { did } = useParams();
+    const navigate = useNavigate();
+    const api = useApi();
+    const { showSnackbar } = useSnackbar();
+
+
+    useEffect(() => {
+
+        const init = async () => {
+        };
+
+        init();
+    }, [profile]);
 
     if (!profile) {
         return <></>;
@@ -38,4 +54,4 @@ function ViewSettingsLogin({ profile }: { profile: any }) {
     )
 }
 
-export default ViewSettingsLogin;
+export default ViewSettingsPreferences;
