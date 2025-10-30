@@ -263,6 +263,17 @@ app.get('/api/rates', async (_: Request, res: Response) => {
     res.json(DexRates);
 });
 
+const ContentRatings = [
+    { label: 'G', name: 'General', description: 'Suitable for all audiences' },
+    { label: 'T', name: 'Teen', description: 'Suitable for ages 13 and older' },
+    { label: 'M', name: 'Mature', description: 'Suitable for ages 17 and older' },
+    { label: 'X', name: 'Explicit', description: 'Suitable for adults (18+) only' }
+];
+
+app.get('/api/content-ratings', async (_: Request, res: Response) => {
+    res.json(ContentRatings);
+});
+
 app.get('/api/challenge', async (req: Request, res: Response) => {
     try {
         const challenge = await keymaster.createChallenge({

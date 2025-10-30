@@ -24,6 +24,7 @@ function ViewCollection() {
     const [uploadWarnings, setUploadWarnings] = useState<any>(null);
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const [publishModalOpen, setPublishModalOpen] = useState(false);
+    const [contentRatings, setContentRatings] = useState<Array<any>>([]);
     const [contentRating, setContentRating] = useState('');
 
     const open = Boolean(anchorEl);
@@ -40,7 +41,15 @@ function ViewCollection() {
             const collection = getCollection.data.collection;
 
             setCollection(collection);
+        }
+        catch (error: any) {
+            showSnackbarError(error, "Failed to load collection data");
+            navigate('/');
+        }
+    }
 
+    async function fetchCredits() {
+        try {
             const getRates = await api.get(`/rates`);
             const rates = getRates.data;
 
@@ -55,13 +64,23 @@ function ViewCollection() {
             setBudget(budget);
         }
         catch (error: any) {
-            showSnackbarError(error, "Failed to load collection data");
-            navigate('/');
+            showSnackbarError(error, "Failed to load credits data");
+        }
+    }
+
+    async function fetchContentRatings() {
+        try {
+            const response = await api.get('/content-ratings');
+            setContentRatings(response.data);
+        } catch (error: any) {
+            showSnackbarError(error, 'Failed to load content ratings');
         }
     }
 
     useEffect(() => {
         fetchCollection();
+        fetchCredits();
+        fetchContentRatings();
     }, [did]);
 
     if (!collection) {
@@ -453,23 +472,34 @@ function ViewCollection() {
                         onChange={e => setContentRating(e.target.value)}
                         fullWidth
                     >
-                        <MenuItem value="G">General (G) - Suitable for all audiences</MenuItem>
-                        <MenuItem value="T">Teen (T) - Suitable for ages 13 and older</MenuItem>
-                        <MenuItem value="M">Mature (M) - Suitable for ages 17 and older</MenuItem>
-                        <MenuItem value="X">Explicit (X) - Suitable for adults only</MenuItem>
+                        {contentRatings.map((rating: any) => (
+                            <MenuItem key={rating.label} value={rating.label}>
+                                {`${rating.name} (${rating.label}) - ${rating.description}`}
+                            </MenuItem>
+                        ))}
                     </Select>
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        disabled={!contentRating}
-                        onClick={() => {
-                            publishCollection();
-                            setPublishModalOpen(false);
-                        }}
-                        sx={{ mt: 2 }}
-                    >
-                        Publish
-                    </Button>
+                    <Box>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            disabled={!contentRating}
+                            onClick={() => {
+                                publishCollection();
+                                setPublishModalOpen(false);
+                            }}
+                            sx={{ mt: 2 }}
+                        >
+                            Publish
+                        </Button>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            sx={{ mt: 2, ml: 2 }}
+                            onClick={() => setPublishModalOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                    </Box>
                 </Box>
             </Modal>
         </>
