@@ -4,7 +4,7 @@ import { useDropzone } from 'react-dropzone';
 import { useSnackbar } from "../contexts/SnackbarContext.js";
 import { useAuth } from "../contexts/AuthContext";
 import { useApi } from "../contexts/ApiContext.js";
-import { Box, Button, Menu, MenuItem, Modal, Typography } from "@mui/material";
+import { Box, Button, Menu, MenuItem, Modal, Select, Typography } from "@mui/material";
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import AssetGrid from "./AssetGrid.js";
 import UserBadge from "./UserBadge.js";
@@ -23,6 +23,10 @@ function ViewCollection() {
     const [uploadResults, setUploadResults] = useState<any>(null);
     const [uploadWarnings, setUploadWarnings] = useState<any>(null);
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const [publishModalOpen, setPublishModalOpen] = useState(false);
+    const [contentRatings, setContentRatings] = useState<Array<any>>([]);
+    const [contentRating, setContentRating] = useState('');
+
     const open = Boolean(anchorEl);
 
     async function fetchCollection() {
@@ -37,7 +41,15 @@ function ViewCollection() {
             const collection = getCollection.data.collection;
 
             setCollection(collection);
+        }
+        catch (error: any) {
+            showSnackbarError(error, "Failed to load collection data");
+            navigate('/');
+        }
+    }
 
+    async function fetchCredits() {
+        try {
             const getRates = await api.get(`/rates`);
             const rates = getRates.data;
 
@@ -52,13 +64,23 @@ function ViewCollection() {
             setBudget(budget);
         }
         catch (error: any) {
-            showSnackbarError(error, "Failed to load collection data");
-            navigate('/');
+            showSnackbarError(error, "Failed to load credits data");
+        }
+    }
+
+    async function fetchContentRatings() {
+        try {
+            const response = await api.get('/content-ratings');
+            setContentRatings(response.data);
+        } catch (error: any) {
+            showSnackbarError(error, 'Failed to load content ratings');
         }
     }
 
     useEffect(() => {
         fetchCollection();
+        fetchCredits();
+        fetchContentRatings();
     }, [did]);
 
     if (!collection) {
@@ -147,7 +169,7 @@ function ViewCollection() {
 
     async function publishCollection() {
         try {
-            await api.patch(`/collection/${did}`, { published: true });
+            await api.patch(`/collection/${did}`, { published: true, contentRating });
             showSnackbar('Collection published successfully.', 'success');
             fetchCollection();
         } catch (error: any) {
@@ -326,9 +348,49 @@ function ViewCollection() {
     const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
         setAnchorEl(event.currentTarget);
     };
+
     const handleMenuClose = () => {
         setAnchorEl(null);
     };
+
+    const modalStyle = {
+        position: 'absolute' as const,
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: 400,
+        bgcolor: 'background.paper',
+        border: '2px solid #1976d2',
+        boxShadow: 24,
+        p: 4,
+        borderRadius: 2,
+    };
+
+    function ContentRatingBadge({ contentRating }: { contentRating: string }) {
+        let label = 'Not yet rated';
+
+        // search contentRatings for matching label
+        const rating = contentRatings.find(r => r.label === contentRating);
+
+        if (rating) {
+            label = `Rated-${rating.label} (${rating.name}) ${rating.description}`;
+        }
+
+        return (
+            <Typography
+                sx={{
+                    fontSize: '1.0em',
+                    border: '2px solid #1976d2',
+                    borderRadius: '6px',
+                    px: 1,
+                    py: 0.5,
+                    display: 'inline-block',
+                }}
+            >
+                {label}
+            </Typography>
+        );
+    }
 
     return (
         <>
@@ -337,45 +399,52 @@ function ViewCollection() {
                     <Typography sx={{ fontSize: '2.0em' }}>{collection.name} by</Typography>
                     <UserBadge did={collection.owner.did} fontSize={'2.0em'} imgSize={'50px'} />
                 </Box>
-                {(collection.userIsOwner || auth.isAdmin) &&
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={handleMenuOpen}
-                            endIcon={<MoreVertIcon />}
-                        >
-                            Actions
-                        </Button>
-                        <Menu
-                            anchorEl={anchorEl}
-                            open={open}
-                            onClose={handleMenuClose}
-                        >
-                            {collection.userIsOwner && (
-                                <>
-                                    <MenuItem onClick={() => { handleMenuClose(); addAsset(); }}>Add asset...</MenuItem>
-                                    <MenuItem onClick={() => { handleMenuClose(); uploadAssets(); }}>Upload images...</MenuItem>
-                                    <MenuItem onClick={() => { handleMenuClose(); renameCollection(); }}>Rename collection...</MenuItem>
-                                    <MenuItem onClick={() => { handleMenuClose(); renameAssets(); }}>Rename assets...</MenuItem>
-                                    <MenuItem onClick={() => { handleMenuClose(); sortAssets(); }}>Sort assets...</MenuItem>
-                                    <MenuItem onClick={() => { handleMenuClose(); removeCollection(); }}>Remove collection...</MenuItem>
-                                    {collection.published ?
-                                        <MenuItem onClick={() => { handleMenuClose(); unpublishCollection(); }}>Unpublish collection</MenuItem>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                    <ContentRatingBadge contentRating={collection.contentRating} />
+                    {(collection.userIsOwner || auth.isAdmin) && (
+                        <Box>
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                onClick={handleMenuOpen}
+                                endIcon={<MoreVertIcon />}
+                            >
+                                Actions
+                            </Button>
+                            <Menu
+                                anchorEl={anchorEl}
+                                open={open}
+                                onClose={handleMenuClose}
+                            >
+                                {collection.userIsOwner && (
+                                    <>
+                                        <MenuItem onClick={() => { handleMenuClose(); addAsset(); }}>Add asset...</MenuItem>
+                                        <MenuItem onClick={() => { handleMenuClose(); uploadAssets(); }}>Upload images...</MenuItem>
+                                        <MenuItem onClick={() => { handleMenuClose(); renameCollection(); }}>Rename collection...</MenuItem>
+                                        <MenuItem onClick={() => { handleMenuClose(); renameAssets(); }}>Rename assets...</MenuItem>
+                                        <MenuItem onClick={() => { handleMenuClose(); sortAssets(); }}>Sort assets...</MenuItem>
+                                        <MenuItem onClick={() => { handleMenuClose(); removeCollection(); }}>Remove collection...</MenuItem>
+                                    </>
+                                )}
+                                {(collection.userIsOwner || auth.isAdmin) && (
+                                    collection.published ?
+                                        <>
+                                            <MenuItem onClick={() => { handleMenuClose(); setPublishModalOpen(true); }}>Rate collection...</MenuItem>
+                                            <MenuItem onClick={() => { handleMenuClose(); unpublishCollection(); }}>Unpublish collection</MenuItem>
+                                        </>
                                         :
-                                        <MenuItem onClick={() => { handleMenuClose(); publishCollection(); }}>Publish collection</MenuItem>
-                                    }
-                                </>
-                            )}
-                            {auth.isAdmin && (
-                                collection.showcased ?
-                                    <MenuItem onClick={() => { handleMenuClose(); showcaseCollection(false); }}>Remove from showcase</MenuItem>
-                                    :
-                                    <MenuItem onClick={() => { handleMenuClose(); showcaseCollection(true); }}>Add to showcase</MenuItem>
-                            )}
-                        </Menu>
-                    </Box>
-                }
+                                        <MenuItem onClick={() => { handleMenuClose(); setPublishModalOpen(true); }}>Publish collection...</MenuItem>
+                                )}
+                                {auth.isAdmin && (
+                                    collection.showcased ?
+                                        <MenuItem onClick={() => { handleMenuClose(); showcaseCollection(false); }}>Remove from showcase</MenuItem>
+                                        :
+                                        <MenuItem onClick={() => { handleMenuClose(); showcaseCollection(true); }}>Add to showcase</MenuItem>
+                                )}
+                            </Menu>
+                        </Box>
+                    )}
+                </Box>
                 <AssetGrid assets={collection.assets} />
             </Box>
             <Modal
@@ -423,6 +492,44 @@ function ViewCollection() {
                         </Button>
                     </Box>
                 </div>
+            </Modal>
+            <Modal open={publishModalOpen} onClose={() => setPublishModalOpen(false)}>
+                <Box sx={{ ...modalStyle }}>
+                    <Typography>Select content rating:</Typography>
+                    <Select
+                        value={contentRating}
+                        onChange={e => setContentRating(e.target.value)}
+                        fullWidth
+                    >
+                        {contentRatings.map((rating: any) => (
+                            <MenuItem key={rating.label} value={rating.label}>
+                                {`${rating.name} (${rating.label}) - ${rating.description}`}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                    <Box>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            disabled={!contentRating}
+                            onClick={() => {
+                                publishCollection();
+                                setPublishModalOpen(false);
+                            }}
+                            sx={{ mt: 2 }}
+                        >
+                            Publish
+                        </Button>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            sx={{ mt: 2, ml: 2 }}
+                            onClick={() => setPublishModalOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                    </Box>
+                </Box>
             </Modal>
         </>
     )

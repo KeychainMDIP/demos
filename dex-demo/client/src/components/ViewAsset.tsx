@@ -25,7 +25,7 @@ function ViewAsset() {
     const navigate = useNavigate();
     const auth = useAuth();
     const api = useApi();
-    const { showSnackbar } = useSnackbar();
+    const { showSnackbar, showSnackbarError } = useSnackbar();
 
     const [asset, setAsset] = useState<any>(null);
     const [collection, setCollection] = useState<any>(null);
@@ -101,7 +101,7 @@ function ViewAsset() {
             setIsAssetOwner(isAssetOwner);
         }
         catch (error: any) {
-            showSnackbar("Failed to load asset data", 'error');
+            showSnackbarError(error, "Failed to load asset data");
             navigate('/');
         }
     }, [api, auth, did, navigate, showSnackbar]);

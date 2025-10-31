@@ -1,40 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { useSnackbar } from "../contexts/SnackbarContext.js";
-import { useApi } from "../contexts/ApiContext.js";
+import React from "react";
 import { formatDate } from "../utils.js";
 import { Box, Table, TableBody, TableCell, TableRow } from "@mui/material";
 
-function ViewSettingsLogin() {
-    const { did } = useParams();
-    const navigate = useNavigate();
-    const api = useApi();
-    const { showSnackbar } = useSnackbar();
-
-    const [profile, setProfile] = useState<any>(null);
-
-    useEffect(() => {
-        if (!did) {
-            showSnackbar("No DID provided for profile.", "error");
-            navigate('/');
-            return;
-        }
-
-        const init = async () => {
-            try {
-                const getProfile = await api.get(`/profile/${did}`);
-                const profile = getProfile.data;
-
-                setProfile(profile);
-            }
-            catch (error: any) {
-                showSnackbar("Failed to load profile data", 'error');
-                navigate('/');
-            }
-        };
-
-        init();
-    }, [did, navigate, showSnackbar]);
+function ViewSettingsLogin({ profile }: { profile: any }) {
 
     if (!profile) {
         return <></>;
