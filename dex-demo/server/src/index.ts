@@ -673,6 +673,24 @@ app.get('/api/asset/:did', async (req: Request, res: Response) => {
             };
         }
 
+        async function fetchCollection(did: string) {
+            try {
+                const { collection, name } = await keymaster.resolveAsset(did);
+
+                return {
+                    did,
+                    name,
+                    published: collection.published,
+                    contentRating: collection.contentRating,
+                    items: collection.assets.length,
+                };
+            }
+            catch (e) {
+                console.log(`Failed to resolve collection ${did}: ${e}`);
+                return null;
+            }
+        }
+
         if (asset.token?.matrix) {
             const { matrix, minted, title } = await keymaster.resolveAsset(asset.token.matrix);
             asset.matrix = { ...matrix, title, did: asset.token.matrix };
@@ -690,8 +708,24 @@ app.get('/api/asset/:did', async (req: Request, res: Response) => {
         if (asset.matrix) {
             asset.matrix.original = asset.cloned;
             asset.creator = await fetchUser(asset.matrix.owner);
-        } else {
-            asset.creator = {};
+            asset.collection = await fetchCollection(asset.matrix.collection);
+        }
+
+        if (asset.collection) {
+            const userDID = req.session?.user?.did;
+            const assetOwner = asset.token?.owner || asset.matrix?.owner;
+            const userIsOwner = userDID === assetOwner;
+            const userIsAdmin = await requestorIsAdmin(req);
+            const maxContentRating = users[userDID || '']?.maxContentRating || 'G';
+
+            // Check publication status and content rating
+            if (!userIsOwner && !userIsAdmin && (
+                !asset.collection.published ||
+                !isRatingAllowed(asset.collection.contentRating, maxContentRating)
+            )) {
+                res.status(404).send("DID not found");
+                return;
+            }
         }
 
         if (asset.minted) {
@@ -1236,13 +1270,18 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
             return;
         }
 
-        // If collection is not published and requester is not the owner, return 404
-        if (!collection.published) {
-            const requesterDID = req.session?.user?.did;
-            if (requesterDID !== collection.owner && !(await requestorIsAdmin(req))) {
-                res.status(404).send("DID not found");
-                return;
-            }
+        const userDID = req.session?.user?.did;
+        const userIsOwner = userDID === collection.owner;
+        const userIsAdmin = await requestorIsAdmin(req);
+        const maxContentRating = users[userDID || '']?.maxContentRating || 'G';
+
+        // Check publication status and content rating
+        if (!userIsOwner && !userIsAdmin && (
+            !collection.published ||
+            !isRatingAllowed(collection.contentRating, maxContentRating)
+        )) {
+            res.status(404).send("DID not found");
+            return;
         }
 
         const profile = users[collection.owner] || { name: 'Anon' };
@@ -1250,7 +1289,6 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
             did: collection.owner,
             name: profile.name || 'Anon',
         };
-        const userIsOwner = req.session?.user?.did === collection.owner;
 
         const assets = [];
         for (const assetId of collection.assets) {
