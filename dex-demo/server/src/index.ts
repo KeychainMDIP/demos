@@ -1317,6 +1317,7 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
         const showcasedCollections = currentDb.showcase?.collections || [];
         const showcased = showcasedCollections.includes(did);
         const published = collection.published;
+        const contentRating = collection.contentRating;
 
         const collectionDetails = {
             did,
@@ -1325,6 +1326,7 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
             assets,
             published,
             showcased,
+            contentRating,
             userIsOwner,
         };
 

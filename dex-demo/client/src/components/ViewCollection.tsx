@@ -366,6 +366,32 @@ function ViewCollection() {
         borderRadius: 2,
     };
 
+    function ContentRatingBadge({ contentRating }: { contentRating: string }) {
+        let label = 'Not yet rated';
+
+        // search contentRatings for matching label
+        const rating = contentRatings.find(r => r.label === contentRating);
+
+        if (rating) {
+            label = `Rated-${rating.label} (${rating.name}) ${rating.description}`;
+        }
+
+        return (
+            <Typography
+                sx={{
+                    fontSize: '1.0em',
+                    border: '2px solid #1976d2',
+                    borderRadius: '6px',
+                    px: 1,
+                    py: 0.5,
+                    display: 'inline-block',
+                }}
+            >
+                {label}
+            </Typography>
+        );
+    }
+
     return (
         <>
             <Box sx={{ width: '100%', p: 3 }}>
@@ -373,49 +399,52 @@ function ViewCollection() {
                     <Typography sx={{ fontSize: '2.0em' }}>{collection.name} by</Typography>
                     <UserBadge did={collection.owner.did} fontSize={'2.0em'} imgSize={'50px'} />
                 </Box>
-                {(collection.userIsOwner || auth.isAdmin) &&
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={handleMenuOpen}
-                            endIcon={<MoreVertIcon />}
-                        >
-                            Actions
-                        </Button>
-                        <Menu
-                            anchorEl={anchorEl}
-                            open={open}
-                            onClose={handleMenuClose}
-                        >
-                            {collection.userIsOwner && (
-                                <>
-                                    <MenuItem onClick={() => { handleMenuClose(); addAsset(); }}>Add asset...</MenuItem>
-                                    <MenuItem onClick={() => { handleMenuClose(); uploadAssets(); }}>Upload images...</MenuItem>
-                                    <MenuItem onClick={() => { handleMenuClose(); renameCollection(); }}>Rename collection...</MenuItem>
-                                    <MenuItem onClick={() => { handleMenuClose(); renameAssets(); }}>Rename assets...</MenuItem>
-                                    <MenuItem onClick={() => { handleMenuClose(); sortAssets(); }}>Sort assets...</MenuItem>
-                                    <MenuItem onClick={() => { handleMenuClose(); removeCollection(); }}>Remove collection...</MenuItem>
-                                </>
-                            )}
-                            {(collection.userIsOwner || auth.isAdmin) && (
-                                collection.published ?
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                    <ContentRatingBadge contentRating={collection.contentRating} />
+                    {(collection.userIsOwner || auth.isAdmin) && (
+                        <Box>
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                onClick={handleMenuOpen}
+                                endIcon={<MoreVertIcon />}
+                            >
+                                Actions
+                            </Button>
+                            <Menu
+                                anchorEl={anchorEl}
+                                open={open}
+                                onClose={handleMenuClose}
+                            >
+                                {collection.userIsOwner && (
                                     <>
-                                        <MenuItem onClick={() => { handleMenuClose(); setPublishModalOpen(true); }}>Rate collection...</MenuItem>
-                                        <MenuItem onClick={() => { handleMenuClose(); unpublishCollection(); }}>Unpublish collection</MenuItem>
+                                        <MenuItem onClick={() => { handleMenuClose(); addAsset(); }}>Add asset...</MenuItem>
+                                        <MenuItem onClick={() => { handleMenuClose(); uploadAssets(); }}>Upload images...</MenuItem>
+                                        <MenuItem onClick={() => { handleMenuClose(); renameCollection(); }}>Rename collection...</MenuItem>
+                                        <MenuItem onClick={() => { handleMenuClose(); renameAssets(); }}>Rename assets...</MenuItem>
+                                        <MenuItem onClick={() => { handleMenuClose(); sortAssets(); }}>Sort assets...</MenuItem>
+                                        <MenuItem onClick={() => { handleMenuClose(); removeCollection(); }}>Remove collection...</MenuItem>
                                     </>
-                                    :
-                                    <MenuItem onClick={() => { handleMenuClose(); setPublishModalOpen(true); }}>Publish collection...</MenuItem>
-                            )}
-                            {auth.isAdmin && (
-                                collection.showcased ?
-                                    <MenuItem onClick={() => { handleMenuClose(); showcaseCollection(false); }}>Remove from showcase</MenuItem>
-                                    :
-                                    <MenuItem onClick={() => { handleMenuClose(); showcaseCollection(true); }}>Add to showcase</MenuItem>
-                            )}
-                        </Menu>
-                    </Box>
-                }
+                                )}
+                                {(collection.userIsOwner || auth.isAdmin) && (
+                                    collection.published ?
+                                        <>
+                                            <MenuItem onClick={() => { handleMenuClose(); setPublishModalOpen(true); }}>Rate collection...</MenuItem>
+                                            <MenuItem onClick={() => { handleMenuClose(); unpublishCollection(); }}>Unpublish collection</MenuItem>
+                                        </>
+                                        :
+                                        <MenuItem onClick={() => { handleMenuClose(); setPublishModalOpen(true); }}>Publish collection...</MenuItem>
+                                )}
+                                {auth.isAdmin && (
+                                    collection.showcased ?
+                                        <MenuItem onClick={() => { handleMenuClose(); showcaseCollection(false); }}>Remove from showcase</MenuItem>
+                                        :
+                                        <MenuItem onClick={() => { handleMenuClose(); showcaseCollection(true); }}>Add to showcase</MenuItem>
+                                )}
+                            </Menu>
+                        </Box>
+                    )}
+                </Box>
                 <AssetGrid assets={collection.assets} />
             </Box>
             <Modal
