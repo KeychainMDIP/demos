@@ -186,6 +186,35 @@ async function loginUser(response: string): Promise<any> {
     return verify;
 }
 
+async function verifyAge(response: string): Promise<any> {
+    const verify = await keymaster.verifyResponse(response, { retries: 10 });
+
+    console.log('Age verification result:', JSON.stringify(verify, null, 4));
+
+    if (verify.match &&
+        verify.responder &&
+        verify.fulfilled === 1 &&
+        Array.isArray(verify.vps) &&
+        verify.vps.length > 0) {
+        const vp: any = verify.vps[0];
+        const currentDb = await db.loadDb();
+        const users = currentDb.users || {};
+
+        if (users[verify.responder]) {
+            const birthDate = vp.credential?.birthDate;
+
+            // Verify birthDate is a valid date string
+            if (birthDate && !isNaN(Date.parse(birthDate))) {
+                // Update user profile with age verification data
+                users[verify.responder].birthDate = birthDate;
+                db.writeDb(currentDb);
+            }
+        }
+    }
+
+    return verify;
+}
+
 async function createCollection(name: string, owner: string): Promise<string> {
     const collection = {
         owner,
@@ -282,8 +311,8 @@ app.get('/api/challenge', async (req: Request, res: Response) => {
         req.session.challenge = challenge;
         const challengeURL = `${WALLET_URL}?challenge=${challenge}`;
 
-        const doc = await keymaster.resolveDID(challenge);
-        console.log(JSON.stringify(doc, null, 4));
+        //const doc = await keymaster.resolveDID(challenge);
+        //console.log(JSON.stringify(doc, null, 4));
         res.json({ challenge, challengeURL });
     } catch (error) {
         console.log(error);
@@ -341,6 +370,51 @@ app.post('/api/logout', async (req: Request, res: Response) => {
         res.json({ ok: true });
     }
     catch (error) {
+        console.log(error);
+        res.status(500).send(String(error));
+    }
+});
+
+app.get('/api/challenge/verify-age', async (_: Request, res: Response) => {
+    const birthdateSchema = 'did:mdip:z3v8AuafNJyLsphTxrJij7KuR9Vt5nn7iiibo2hKubzmsR531Hf';
+
+    try {
+        const challenge = await keymaster.createChallenge({
+            credentials: [{ schema: birthdateSchema }],
+            callback: `${HOST_URL}/api/verify-age`
+        });
+        const challengeURL = `${WALLET_URL}?challenge=${challenge}`;
+
+        const doc = await keymaster.resolveDID(challenge);
+        console.log(JSON.stringify(doc, null, 4));
+        res.json({ challenge, challengeURL });
+    } catch (error) {
+        console.log(error);
+        res.status(500).send(String(error));
+    }
+});
+
+app.get('/api/verify-age', cors(corsOptions), async (req: Request, res: Response) => {
+    try {
+        const { response } = req.query;
+        if (typeof response !== 'string') {
+            res.status(400).send('Missing or invalid response param');
+            return;
+        }
+        const verify = await verifyAge(response);
+        res.json({ verified: verify.match });
+    } catch (error) {
+        console.log(error);
+        res.status(500).send(String(error));
+    }
+});
+
+app.post('/api/verify-age', cors(corsOptions), async (req: Request, res: Response) => {
+    try {
+        const { response } = req.body;
+        const verify = await verifyAge(response);
+        res.json({ verified: verify.match });
+    } catch (error) {
         console.log(error);
         res.status(500).send(String(error));
     }

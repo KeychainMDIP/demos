@@ -22,6 +22,7 @@ import ViewCollection from "./components/ViewCollection";
 import ViewAsset from "./components/ViewAsset.js";
 import NotFound from './components/NotFound.js';
 import JsonViewer from "./components/JsonViewer.js";
+import ViewVerifyAge from "./components/ViewVerifyAge";
 import './App.css';
 
 function AppLayout() {
@@ -46,6 +47,7 @@ function AppLayout() {
                         <Route path="/asset/:did" element={<ViewAsset />} />
                         <Route path="/users" element={<ViewUsers />} />
                         <Route path="/search" element={<JsonViewer />} />
+                        <Route path="/verify-age" element={<ViewVerifyAge />} />
                         <Route path="*" element={<NotFound />} />
                     </Routes>
                 </Box>
