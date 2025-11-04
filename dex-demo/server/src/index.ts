@@ -238,16 +238,6 @@ function addTransaction(user: User, txn: any): void {
     user.transactions.push({ ...txn, balance, time });
 }
 
-function isRatingAllowed(rating: string, maxRating: string): boolean {
-    const ratings = ['G', 'T', 'M', 'X'];
-
-    if (!ratings.includes(rating) || !ratings.includes(maxRating)) {
-        return false;
-    }
-
-    return ratings.indexOf(rating) <= ratings.indexOf(maxRating);
-}
-
 const corsOptions = {
     origin: process.env.DEX_CORS_SITE_ORIGIN || 'http://localhost:3009', // Origin needs to be specified with credentials true
     methods: ['DELETE', 'GET', 'POST', 'PUT'],  // Specify which methods are allowed (e.g., GET, POST)
@@ -293,11 +283,43 @@ app.get('/api/rates', async (_: Request, res: Response) => {
 });
 
 const ContentRatings = [
-    { label: 'G', name: 'General', description: 'Suitable for all audiences' },
-    { label: 'T', name: 'Teen', description: 'Suitable for ages 13 and older' },
-    { label: 'M', name: 'Mature', description: 'Suitable for ages 17 and older' },
-    { label: 'X', name: 'Explicit', description: 'Suitable for adults (18+) only' }
+    { label: 'G', name: 'General', minAge: 0, description: 'Suitable for all audiences' },
+    { label: 'T', name: 'Teen', minAge: 13, description: 'Suitable for ages 13 and older' },
+    { label: 'M', name: 'Mature', minAge: 18, description: 'Suitable for ages 18 and older' },
+    { label: 'X', name: 'Explicit', minAge: 21, description: 'Suitable for adults (21+) only' },
 ];
+
+function isRatingAllowed(rating: string, maxRating: string): boolean {
+    // Sort by minAge and extract labels
+    const ratings = ContentRatings.sort((a, b) => a.minAge - b.minAge).map(r => r.label);
+
+    if (!ratings.includes(rating) || !ratings.includes(maxRating)) {
+        return false;
+    }
+
+    return ratings.indexOf(rating) <= ratings.indexOf(maxRating);
+}
+
+function isUserOldEnough(birthDate: string, contentRating: string): boolean {
+    const contentMinAge = ContentRatings.find(r => r.label === contentRating)?.minAge;
+
+    if (contentMinAge === undefined) {
+        return false;
+    }
+
+    const birthDateObj = new Date(birthDate);
+    const birthTime = birthDateObj.getTime();
+
+    if (isNaN(birthTime)) {
+        return false;
+    }
+
+    const ageDifMs = Date.now() - birthTime;
+    const ageDate = new Date(ageDifMs); // miliseconds from epoch
+    const userAge = Math.abs(ageDate.getUTCFullYear() - 1970);
+
+    return (userAge >= contentMinAge);
+}
 
 app.get('/api/content-ratings', async (_: Request, res: Response) => {
     res.json(ContentRatings);
@@ -387,7 +409,7 @@ app.get('/api/challenge/verify-age', async (_: Request, res: Response) => {
 
         const doc = await keymaster.resolveDID(challenge);
         console.log(JSON.stringify(doc, null, 4));
-        res.json({ challenge, challengeURL });
+        res.json({ challenge, challengeURL, birthdateSchema });
     } catch (error) {
         console.log(error);
         res.status(500).send(String(error));
@@ -402,7 +424,14 @@ app.get('/api/verify-age', cors(corsOptions), async (req: Request, res: Response
             return;
         }
         const verify = await verifyAge(response);
-        res.json({ verified: verify.match });
+
+        if (verify.match) {
+            res.json({ verified: true });
+        } else {
+            res.status(400).json({
+                error: "Credential verification failed: required birthDate credential not found"
+            });
+        }
     } catch (error) {
         console.log(error);
         res.status(500).send(String(error));
@@ -413,7 +442,14 @@ app.post('/api/verify-age', cors(corsOptions), async (req: Request, res: Respons
     try {
         const { response } = req.body;
         const verify = await verifyAge(response);
-        res.json({ verified: verify.match });
+
+        if (verify.match) {
+            res.json({ verified: true });
+        } else {
+            res.status(400).json({
+                error: "Credential verification failed: required birthDate credential not found"
+            });
+        }
     } catch (error) {
         console.log(error);
         res.status(500).send(String(error));
@@ -649,6 +685,18 @@ app.patch('/api/profile/:did', isAuthenticated, async (req: Request, res: Respon
         }
 
         if (maxContentRating !== undefined) {
+            const birthDate = currentDb.users[did].birthDate;
+
+            if (!birthDate) {
+                res.status(400).send('Birth date not verified. Cannot set content rating preference.');
+                return;
+            }
+
+            if (!isUserOldEnough(birthDate, maxContentRating)) {
+                res.status(400).send(`User is not old enough for content rating ${maxContentRating}`);
+                return;
+            }
+
             currentDb.users[did].maxContentRating = maxContentRating;
         }
 

@@ -15,6 +15,7 @@ function ViewVerifyAge() {
     const [verifying, setVerifying] = useState<boolean>(false);
     const [challengeURL, setChallengeURL] = useState<string | null>(null);
     const [extensionURL, setExtensionURL] = useState<string>('');
+    const [birthdateSchema, setBirthdateSchema] = useState<string>('');
 
     const navigate = useNavigate();
     const { showSnackbar } = useSnackbar();
@@ -28,10 +29,12 @@ function ViewVerifyAge() {
                 }, 1000); // Check every second
 
                 const response = await api.get(`/challenge/verify-age`);
-                const { challenge, challengeURL } = response.data;
+                const { challenge, challengeURL, birthdateSchema } = response.data;
+
                 setChallengeDID(challenge);
                 setExtensionURL(`mdip://auth?challenge=${challenge}`);
                 setChallengeURL(encodeURI(challengeURL));
+                setBirthdateSchema(birthdateSchema);
             }
             catch (error: any) {
                 showSnackbar('Failed to get challenge', 'error');
@@ -53,6 +56,7 @@ function ViewVerifyAge() {
             if (intervalIdRef.current) {
                 clearInterval(intervalIdRef.current);
             }
+            showSnackbar('Age verified!', 'success');
             navigate(`/settings/${auth.userDID}`);
         }
     }, [auth.profile?.birthDate, navigate]);
@@ -90,6 +94,13 @@ function ViewVerifyAge() {
                 p: 2,
             }}
         >
+            <Typography variant="h5">Verify Age</Typography>
+            <Typography variant="body1">
+                To verify your age, please use a compatible DID wallet to respond to the challenge below with a verifiable credential that includes your birth date.
+            </Typography>
+            <Typography variant="body1">
+                The required credential schema is: <strong>{birthdateSchema}</strong>
+            </Typography>
             <Box
                 sx={{
                     display: 'flex',
