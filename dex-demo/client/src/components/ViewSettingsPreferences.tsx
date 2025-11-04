@@ -35,7 +35,7 @@ function ViewSettingsPreferences({ profile, onSave }: { profile: any; onSave: ()
         if (profile.birthDate) {
             const birthDate = new Date(profile.birthDate);
             const ageDifMs = Date.now() - birthDate.getTime();
-            const ageDate = new Date(ageDifMs); // miliseconds from epoch
+            const ageDate = new Date(ageDifMs); // milliseconds from epoch
             const age = Math.abs(ageDate.getUTCFullYear() - 1970);
             setVerifiedAge(age);
         }
