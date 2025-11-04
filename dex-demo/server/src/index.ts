@@ -291,7 +291,7 @@ const ContentRatings = [
 
 function isRatingAllowed(rating: string, maxRating: string): boolean {
     // Sort by minAge and extract labels
-    const ratings = ContentRatings.sort((a, b) => a.minAge - b.minAge).map(r => r.label);
+    const ratings = [...ContentRatings].sort((a, b) => a.minAge - b.minAge).map(r => r.label);
 
     if (!ratings.includes(rating) || !ratings.includes(maxRating)) {
         return false;
