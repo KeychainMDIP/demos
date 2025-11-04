@@ -845,7 +845,7 @@ app.get('/api/asset/:did', async (req: Request, res: Response) => {
                 !asset.collection.published ||
                 !isRatingAllowed(asset.collection.contentRating, maxContentRating)
             )) {
-                res.status(404).send("DID not found");
+                res.status(404).send("Asset not found or restricted");
                 return;
             }
         }
