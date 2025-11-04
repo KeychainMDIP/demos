@@ -1215,7 +1215,7 @@ app.post('/api/asset/:did/buy', isAuthenticated, async (req: Request, res: Respo
         const maxContentRating = buyerProfile.maxContentRating || 'G';
 
         if (!isRatingAllowed(collection.collection?.contentRating, maxContentRating)) {
-            res.status(403).send("DID not found");
+            res.status(403).send("Content not accessible due to rating restrictions");
             return;
         }
 
