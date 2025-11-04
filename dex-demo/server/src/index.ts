@@ -101,6 +101,26 @@ function isAdmin(req: Request, res: Response, next: NextFunction): void {
     });
 }
 
+async function requestorIsAdmin(req: Request): Promise<boolean> {
+    if (!req.session.user?.did) {
+        return false;
+    }
+
+    const userDID = req.session.user.did;
+    const currentDb = await db.loadDb();
+    const users = currentDb.users || {};
+    const user = users[userDID];
+
+    if (!user) {
+        return false;
+    }
+
+    const isOwner = userDID === OWNER_DID;
+    const isAdmin = user.role === 'Admin' || isOwner;
+
+    return isAdmin;
+}
+
 async function loginUser(response: string): Promise<any> {
     const verify = await keymaster.verifyResponse(response, { retries: 10 });
 
@@ -166,6 +186,35 @@ async function loginUser(response: string): Promise<any> {
     return verify;
 }
 
+async function verifyAge(response: string): Promise<any> {
+    const verify = await keymaster.verifyResponse(response, { retries: 10 });
+
+    console.log('Age verification result:', JSON.stringify(verify, null, 4));
+
+    if (verify.match &&
+        verify.responder &&
+        verify.fulfilled === 1 &&
+        Array.isArray(verify.vps) &&
+        verify.vps.length > 0) {
+        const vp: any = verify.vps[0];
+        const currentDb = await db.loadDb();
+        const users = currentDb.users || {};
+
+        if (users[verify.responder]) {
+            const birthDate = vp.credential?.birthDate;
+
+            // Verify birthDate is a valid date string
+            if (birthDate && !isNaN(Date.parse(birthDate))) {
+                // Update user profile with age verification data
+                users[verify.responder].birthDate = birthDate;
+                db.writeDb(currentDb);
+            }
+        }
+    }
+
+    return verify;
+}
+
 async function createCollection(name: string, owner: string): Promise<string> {
     const collection = {
         owner,
@@ -174,6 +223,19 @@ async function createCollection(name: string, owner: string): Promise<string> {
 
     const collectionDID = await keymaster.createAsset({ name, collection });
     return collectionDID;
+}
+
+function addTransaction(user: User, txn: any): void {
+    const balance = (user.credits || 0) + txn.credits;
+    const time = new Date().toISOString();
+
+    user.credits = balance;
+
+    if (!user.transactions) {
+        user.transactions = [];
+    }
+
+    user.transactions.push({ ...txn, balance, time });
 }
 
 const corsOptions = {
@@ -220,6 +282,49 @@ app.get('/api/rates', async (_: Request, res: Response) => {
     res.json(DexRates);
 });
 
+const ContentRatings = [
+    { label: 'G', name: 'General', minAge: 0, description: 'Suitable for all audiences' },
+    { label: 'T', name: 'Teen', minAge: 13, description: 'Suitable for ages 13 and older' },
+    { label: 'M', name: 'Mature', minAge: 18, description: 'Suitable for ages 18 and older' },
+    { label: 'X', name: 'Explicit', minAge: 21, description: 'Suitable for adults (21+) only' },
+];
+
+function isRatingAllowed(rating: string, maxRating: string): boolean {
+    // Sort by minAge and extract labels
+    const ratings = [...ContentRatings].sort((a, b) => a.minAge - b.minAge).map(r => r.label);
+
+    if (!ratings.includes(rating) || !ratings.includes(maxRating)) {
+        return false;
+    }
+
+    return ratings.indexOf(rating) <= ratings.indexOf(maxRating);
+}
+
+function isUserOldEnough(birthDate: string, contentRating: string): boolean {
+    const contentMinAge = ContentRatings.find(r => r.label === contentRating)?.minAge;
+
+    if (contentMinAge === undefined) {
+        return false;
+    }
+
+    const birthDateObj = new Date(birthDate);
+    const birthTime = birthDateObj.getTime();
+
+    if (isNaN(birthTime)) {
+        return false;
+    }
+
+    const ageDifMs = Date.now() - birthTime;
+    const ageDate = new Date(ageDifMs); // milliseconds from epoch
+    const userAge = Math.abs(ageDate.getUTCFullYear() - 1970);
+
+    return (userAge >= contentMinAge);
+}
+
+app.get('/api/content-ratings', async (_: Request, res: Response) => {
+    res.json(ContentRatings);
+});
+
 app.get('/api/challenge', async (req: Request, res: Response) => {
     try {
         const challenge = await keymaster.createChallenge({
@@ -228,8 +333,8 @@ app.get('/api/challenge', async (req: Request, res: Response) => {
         req.session.challenge = challenge;
         const challengeURL = `${WALLET_URL}?challenge=${challenge}`;
 
-        const doc = await keymaster.resolveDID(challenge);
-        console.log(JSON.stringify(doc, null, 4));
+        //const doc = await keymaster.resolveDID(challenge);
+        //console.log(JSON.stringify(doc, null, 4));
         res.json({ challenge, challengeURL });
     } catch (error) {
         console.log(error);
@@ -241,7 +346,7 @@ app.get('/api/login', cors(corsOptions), async (req: Request, res: Response) => 
     try {
         const { response } = req.query;
         if (typeof response !== 'string') {
-            res.status(400).json({ error: 'Missing or invalid response param' });
+            res.status(400).send('Missing or invalid response param');
             return;
         }
         const verify = await loginUser(response);
@@ -287,6 +392,65 @@ app.post('/api/logout', async (req: Request, res: Response) => {
         res.json({ ok: true });
     }
     catch (error) {
+        console.log(error);
+        res.status(500).send(String(error));
+    }
+});
+
+app.get('/api/challenge/verify-age', async (_: Request, res: Response) => {
+    const birthdateSchema = 'did:mdip:z3v8AuafNJyLsphTxrJij7KuR9Vt5nn7iiibo2hKubzmsR531Hf';
+
+    try {
+        const challenge = await keymaster.createChallenge({
+            credentials: [{ schema: birthdateSchema }],
+            callback: `${HOST_URL}/api/verify-age`
+        });
+        const challengeURL = `${WALLET_URL}?challenge=${challenge}`;
+
+        const doc = await keymaster.resolveDID(challenge);
+        console.log(JSON.stringify(doc, null, 4));
+        res.json({ challenge, challengeURL, birthdateSchema });
+    } catch (error) {
+        console.log(error);
+        res.status(500).send(String(error));
+    }
+});
+
+app.get('/api/verify-age', cors(corsOptions), async (req: Request, res: Response) => {
+    try {
+        const { response } = req.query;
+        if (typeof response !== 'string') {
+            res.status(400).send('Missing or invalid response param');
+            return;
+        }
+        const verify = await verifyAge(response);
+
+        if (verify.match) {
+            res.json({ verified: true });
+        } else {
+            res.status(400).json({
+                error: "Credential verification failed: required birthDate credential not found"
+            });
+        }
+    } catch (error) {
+        console.log(error);
+        res.status(500).send(String(error));
+    }
+});
+
+app.post('/api/verify-age', cors(corsOptions), async (req: Request, res: Response) => {
+    try {
+        const { response } = req.body;
+        const verify = await verifyAge(response);
+
+        if (verify.match) {
+            res.json({ verified: true });
+        } else {
+            res.status(400).json({
+                error: "Credential verification failed: required birthDate credential not found"
+            });
+        }
+    } catch (error) {
         console.log(error);
         res.status(500).send(String(error));
     }
@@ -385,8 +549,10 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
 
         const rawProfile = currentDb.users[did];
         const userDID = req.session.user?.did;
+        const userProfile = userDID ? currentDb.users[userDID] : undefined;
+        const maxContentRating = userProfile?.maxContentRating || 'G';
         const isUser = (userDID === did);
-        const isAdmin = (userDID === OWNER_DID) || (userDID && currentDb.users && currentDb.users[userDID]?.role === 'Admin');
+        const isAdmin = await requestorIsAdmin(req);
         const collections: any[] = [];
         const collected: any[] = [];
 
@@ -394,7 +560,7 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
             try {
                 const { collection, name } = await keymaster.resolveAsset(collectionId);
                 if (collection) {
-                    if (!isUser && !collection.published) {
+                    if (!isUser && (!collection.published || !isRatingAllowed(collection.contentRating, maxContentRating))) {
                         continue;
                     }
 
@@ -416,6 +582,7 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
                         items: collection.assets.length,
                         thumbnail,
                         published: collection.published,
+                        contentRating: collection.contentRating,
                     });
                 }
             } catch (e) {
@@ -492,10 +659,10 @@ app.get('/api/profile/:did', async (req: Request, res: Response) => {
 app.patch('/api/profile/:did', isAuthenticated, async (req: Request, res: Response) => {
     try {
         const did = req.params.did;
-        const { name, tagline, pfp } = req.body;
+        const { name, tagline, pfp, maxContentRating } = req.body;
 
         if (!req.session.user || req.session.user.did !== did) {
-            res.status(403).json({ message: 'Forbidden' });
+            res.status(403).send('Forbidden');
             return;
         }
 
@@ -515,6 +682,22 @@ app.patch('/api/profile/:did', isAuthenticated, async (req: Request, res: Respon
 
         if (pfp !== undefined) {
             currentDb.users[did].pfp = pfp;
+        }
+
+        if (maxContentRating !== undefined) {
+            const birthDate = currentDb.users[did].birthDate;
+
+            if (!birthDate) {
+                res.status(400).send('Birth date not verified. Cannot set content rating preference.');
+                return;
+            }
+
+            if (!isUserOldEnough(birthDate, maxContentRating)) {
+                res.status(400).send(`User is not old enough for content rating ${maxContentRating}`);
+                return;
+            }
+
+            currentDb.users[did].maxContentRating = maxContentRating;
         }
 
         db.writeDb(currentDb);
@@ -612,6 +795,24 @@ app.get('/api/asset/:did', async (req: Request, res: Response) => {
             };
         }
 
+        async function fetchCollection(did: string) {
+            try {
+                const { collection, name } = await keymaster.resolveAsset(did);
+
+                return {
+                    did,
+                    name,
+                    published: collection.published,
+                    contentRating: collection.contentRating,
+                    items: collection.assets.length,
+                };
+            }
+            catch (e) {
+                console.log(`Failed to resolve collection ${did}: ${e}`);
+                return null;
+            }
+        }
+
         if (asset.token?.matrix) {
             const { matrix, minted, title } = await keymaster.resolveAsset(asset.token.matrix);
             asset.matrix = { ...matrix, title, did: asset.token.matrix };
@@ -629,8 +830,24 @@ app.get('/api/asset/:did', async (req: Request, res: Response) => {
         if (asset.matrix) {
             asset.matrix.original = asset.cloned;
             asset.creator = await fetchUser(asset.matrix.owner);
-        } else {
-            asset.creator = {};
+            asset.collection = await fetchCollection(asset.matrix.collection);
+        }
+
+        if (asset.collection) {
+            const userDID = req.session?.user?.did;
+            const assetOwner = asset.token?.owner || asset.matrix?.owner;
+            const userIsOwner = userDID === assetOwner;
+            const userIsAdmin = await requestorIsAdmin(req);
+            const maxContentRating = users[userDID || '']?.maxContentRating || 'G';
+
+            // Check publication status and content rating
+            if (!userIsOwner && !userIsAdmin && (
+                !asset.collection.published ||
+                !isRatingAllowed(asset.collection.contentRating, maxContentRating)
+            )) {
+                res.status(404).send("Asset not found or restricted");
+                return;
+            }
         }
 
         if (asset.minted) {
@@ -678,7 +895,7 @@ app.patch('/api/asset/:did', isAuthenticated, async (req: Request, res: Response
         const owner = asset.matrix?.owner || asset.token?.owner;
 
         if (!req.session.user || req.session.user.did !== owner) {
-            res.status(403).json({ message: 'Forbidden' });
+            res.status(403).send('Forbidden');
             return;
         }
 
@@ -774,19 +991,6 @@ app.post('/api/asset/:did/move', isAuthenticated, async (req: Request, res: Resp
     }
 });
 
-function addTransaction(user: User, txn: any): void {
-    const balance = (user.credits || 0) + txn.credits;
-    const time = new Date().toISOString();
-
-    user.credits = balance;
-
-    if (!user.transactions) {
-        user.transactions = [];
-    }
-
-    user.transactions.push({ ...txn, balance, time });
-}
-
 app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Response) => {
     try {
         const did = req.params.did;
@@ -817,7 +1021,7 @@ app.post('/api/asset/:did/mint', isAuthenticated, async (req: Request, res: Resp
         const owner = asset.matrix?.owner;
 
         if (!req.session.user || req.session.user.did !== owner) {
-            res.status(403).json({ message: 'Forbidden' });
+            res.status(403).send('Forbidden');
             return;
         }
 
@@ -904,7 +1108,7 @@ app.post('/api/asset/:did/unmint', isAuthenticated, async (req: Request, res: Re
         const owner = asset.matrix?.owner;
 
         if (!req.session.user || req.session.user.did !== owner) {
-            res.status(403).json({ message: 'Forbidden' });
+            res.status(403).send('Forbidden');
             return;
         }
 
@@ -968,7 +1172,7 @@ app.post('/api/asset/:did/buy', isAuthenticated, async (req: Request, res: Respo
         }
 
         if (!req.session.user?.did) {
-            res.status(403).json({ message: 'Forbidden' });
+            res.status(403).send('Forbidden');
             return;
         }
 
@@ -1003,6 +1207,15 @@ app.post('/api/asset/:did/buy', isAuthenticated, async (req: Request, res: Respo
 
         if ((buyerProfile.credits || 0) < price) {
             res.status(403).send("Insufficient credits");
+            return;
+        }
+
+        const matrix = await keymaster.resolveAsset(asset.token.matrix);
+        const collection = await keymaster.resolveAsset(matrix.matrix?.collection);
+        const maxContentRating = buyerProfile.maxContentRating || 'G';
+
+        if (!isRatingAllowed(collection.collection?.contentRating, maxContentRating)) {
+            res.status(403).send("Content not accessible due to rating restrictions");
             return;
         }
 
@@ -1112,14 +1325,14 @@ app.post('/api/asset/:did/buy', isAuthenticated, async (req: Request, res: Respo
 app.post('/api/collection', isAuthenticated, async (req: Request, res: Response) => {
     try {
         if (!req.session.user?.did) {
-            res.status(403).json({ message: 'Forbidden' });
+            res.status(403).send('Forbidden');
             return;
         }
 
         const { name } = req.body;
 
         if (!name || typeof name !== 'string' || name.trim().length === 0) {
-            res.status(400).json({ message: 'Collection name is required' });
+            res.status(400).send('Collection name is required');
             return;
         }
 
@@ -1128,7 +1341,7 @@ app.post('/api/collection', isAuthenticated, async (req: Request, res: Response)
         const users = currentDb.users || {};
 
         if (!users[did]) {
-            res.status(404).json({ message: 'User not found' });
+            res.status(404).send('User not found');
             return;
         }
 
@@ -1145,7 +1358,7 @@ app.post('/api/collection', isAuthenticated, async (req: Request, res: Response)
 app.delete('/api/collection/:did', isAuthenticated, async (req: Request, res: Response) => {
     try {
         if (!req.session.user?.did) {
-            res.status(403).json({ message: 'Forbidden' });
+            res.status(403).send('Forbidden');
             return;
         }
 
@@ -1188,13 +1401,18 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
             return;
         }
 
-        // If collection is not published and requester is not the owner, return 404
-        if (!collection.published) {
-            const requesterDID = req.session?.user?.did;
-            if (requesterDID !== collection.owner) {
-                res.status(404).send("DID not found");
-                return;
-            }
+        const userDID = req.session?.user?.did;
+        const userIsOwner = userDID === collection.owner;
+        const userIsAdmin = await requestorIsAdmin(req);
+        const maxContentRating = users[userDID || '']?.maxContentRating || 'G';
+
+        // Check publication status and content rating
+        if (!userIsOwner && !userIsAdmin && (
+            !collection.published ||
+            !isRatingAllowed(collection.contentRating, maxContentRating)
+        )) {
+            res.status(404).send("DID not found");
+            return;
         }
 
         const profile = users[collection.owner] || { name: 'Anon' };
@@ -1202,7 +1420,6 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
             did: collection.owner,
             name: profile.name || 'Anon',
         };
-        const userIsOwner = req.session?.user?.did === collection.owner;
 
         const assets = [];
         for (const assetId of collection.assets) {
@@ -1231,6 +1448,7 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
         const showcasedCollections = currentDb.showcase?.collections || [];
         const showcased = showcasedCollections.includes(did);
         const published = collection.published;
+        const contentRating = collection.contentRating;
 
         const collectionDetails = {
             did,
@@ -1239,6 +1457,7 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
             assets,
             published,
             showcased,
+            contentRating,
             userIsOwner,
         };
 
@@ -1251,7 +1470,7 @@ app.get('/api/collection/:did', async (req: Request, res: Response) => {
 app.patch('/api/collection/:did', isAuthenticated, async (req: Request, res: Response) => {
     try {
         const did = req.params.did;
-        const { name, thumbnail, published } = req.body;
+        const { name, thumbnail, published, contentRating } = req.body;
 
         const data = await keymaster.resolveAsset(did);
 
@@ -1265,8 +1484,12 @@ app.patch('/api/collection/:did', isAuthenticated, async (req: Request, res: Res
             return;
         }
 
-        if (!req.session.user || req.session.user.did !== data.collection.owner) {
-            res.status(403).json({ message: 'Forbidden' });
+        const userDID = req.session.user?.did;
+        const isOwner = (userDID === data.collection.owner);
+        const isAdmin = await requestorIsAdmin(req);
+
+        if (!isOwner && !isAdmin) {
+            res.status(403).send('Forbidden');
             return;
         }
 
@@ -1280,6 +1503,10 @@ app.patch('/api/collection/:did', isAuthenticated, async (req: Request, res: Res
 
         if (published !== undefined) {
             data.collection.published = published;
+        }
+
+        if (contentRating !== undefined) {
+            data.collection.contentRating = contentRating;
         }
 
         await keymaster.updateAsset(did, data);
@@ -1547,14 +1774,14 @@ app.get('/api/ipfs/:cid', async (req, res) => {
 app.post('/api/add-credits', isAuthenticated, async (req: Request, res: Response) => {
     try {
         if (!req.session.user?.did) {
-            res.status(403).json({ message: 'Forbidden' });
+            res.status(403).send('Forbidden');
             return;
         }
 
         const { amount } = req.body;
 
         if (!amount || typeof amount !== 'number' || amount <= 0) {
-            res.status(400).json({ message: 'Valid amount is required' });
+            res.status(400).send('Valid amount is required');
             return;
         }
 
@@ -1563,7 +1790,7 @@ app.post('/api/add-credits', isAuthenticated, async (req: Request, res: Response
         const users = currentDb.users || {};
 
         if (!users[did]) {
-            res.status(404).json({ message: 'User not found' });
+            res.status(404).send('User not found');
             return;
         }
 
@@ -1660,7 +1887,7 @@ app.post('/api/showcase', isAdmin, async (req: Request, res: Response) => {
     }
 });
 
-app.get('/api/showcase', async (_, res) => {
+app.get('/api/showcase', async (req, res) => {
     try {
         const currentDb = await db.loadDb();
 
@@ -1671,11 +1898,16 @@ app.get('/api/showcase', async (_, res) => {
         const collections: any[] = [];
         const creators: any[] = [];
 
+        const userDID = req.session.user?.did;
+        const users = currentDb.users || {};
+        const userProfile = userDID ? users[userDID] : undefined;
+        const maxContentRating = userProfile?.maxContentRating || 'G';
+
         for (const collectionId of currentDb.showcase.collections || []) {
             try {
                 const { collection, name } = await keymaster.resolveAsset(collectionId);
                 if (collection) {
-                    if (!collection.published) {
+                    if (!collection.published || !isRatingAllowed(collection.contentRating, maxContentRating)) {
                         continue;
                     }
 
@@ -1697,6 +1929,7 @@ app.get('/api/showcase', async (_, res) => {
                         items: collection.assets.length,
                         thumbnail,
                         published: collection.published,
+                        contentRating: collection.contentRating,
                     });
                 }
             } catch (e) {
@@ -1730,7 +1963,7 @@ app.get('/api/showcase', async (_, res) => {
                 for (const collectionId of profile.assets.collections || []) {
                     try {
                         const { collection } = await keymaster.resolveAsset(collectionId);
-                        if (collection && collection.published) {
+                        if (collection && collection.published && isRatingAllowed(collection.contentRating, maxContentRating)) {
                             collections++;
                         }
                     } catch (e) {

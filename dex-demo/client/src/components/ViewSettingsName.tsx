@@ -1,18 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useSnackbar } from "../contexts/SnackbarContext.js";
 import { useApi } from "../contexts/ApiContext.js";
 import { useAuth } from "../contexts/AuthContext.js";
 import { Button, Box, Select, MenuItem, Table, TableBody, TableCell, TableRow, TextField } from "@mui/material";
 
-function ViewSettingsName({ onSave }: { onSave: () => void }) {
-    const { did } = useParams();
+function ViewSettingsName({ profile, onSave }: { profile: any; onSave: () => void }) {
     const { showSnackbar } = useSnackbar();
     const navigate = useNavigate();
     const api = useApi();
     const auth = useAuth();
 
-    const [profile, setProfile] = useState<any>(null);
     const [currentName, setCurrentName] = useState<string>("");
     const [newName, setNewName] = useState<string>("");
     const [roleList, setRoleList] = useState<string[]>([]);
@@ -22,44 +20,27 @@ function ViewSettingsName({ onSave }: { onSave: () => void }) {
     const [newTagline, setNewTagline] = useState<string>("");
 
     useEffect(() => {
-        if (!did) {
-            showSnackbar("No DID provided for profile.", "error");
-            navigate('/');
-            return;
-        }
-
         const init = async () => {
-            try {
-                const getProfile = await api.get(`/profile/${did}`);
-                const profile = getProfile.data;
-
-                setProfile(profile);
-
-                if (profile.name) {
-                    setCurrentName(profile.name);
-                    setNewName(profile.name);
-                }
-
-                if (profile.role) {
-                    setCurrentRole(profile.role);
-                    setNewRole(profile.role);
-                }
-
-                if (profile.tagline) {
-                    setCurrentTagline(profile.tagline);
-                    setNewTagline(profile.tagline);
-                }
-
-                setRoleList(['Admin', 'Moderator', 'Member']);
+            if (profile.name) {
+                setCurrentName(profile.name);
+                setNewName(profile.name);
             }
-            catch (error: any) {
-                showSnackbar("Failed to load profile data", 'error');
-                navigate('/');
+
+            if (profile.role) {
+                setCurrentRole(profile.role);
+                setNewRole(profile.role);
             }
+
+            if (profile.tagline) {
+                setCurrentTagline(profile.tagline);
+                setNewTagline(profile.tagline);
+            }
+
+            setRoleList(['Admin', 'Moderator', 'Member']);
         };
 
         init();
-    }, [did, navigate, showSnackbar]);
+    }, [profile, navigate, showSnackbar]);
 
     async function saveName() {
         try {
@@ -153,7 +134,7 @@ function ViewSettingsName({ onSave }: { onSave: () => void }) {
                                         onChange={(e) => setNewTagline(e.target.value)}
                                         slotProps={{
                                             htmlInput: {
-                                                maxLength: 20,
+                                                maxLength: 32,
                                             },
                                         }}
                                         sx={{ width: 300 }}

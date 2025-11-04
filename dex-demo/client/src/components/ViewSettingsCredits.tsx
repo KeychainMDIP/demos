@@ -1,42 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
 import { useSnackbar } from "../contexts/SnackbarContext.js";
 import { useApi } from "../contexts/ApiContext.js";
 import { Button, Box, Table, TableBody, TableCell, TableRow, TextField } from "@mui/material";
 
-function ViewSettingsCredits({ onSave }: { onSave: () => void }) {
-    const { did } = useParams();
+function ViewSettingsCredits({ profile, onSave }: { profile: any; onSave: () => void }) {
     const { showSnackbar } = useSnackbar();
-    const navigate = useNavigate();
     const api = useApi();
 
-    const [profile, setProfile] = useState<any>(null);
     const [balance, setBalance] = useState<number>(0);
     const [credits, setCredits] = useState<number>(0);
 
     useEffect(() => {
-        if (!did) {
-            showSnackbar("No DID provided for profile.", "error");
-            navigate('/');
-            return;
-        }
-
-        const init = async () => {
-            try {
-                const getProfile = await api.get(`/profile/${did}`);
-                const profile = getProfile.data;
-
-                setProfile(profile);
-                setBalance(profile.credits || 0);
-            }
-            catch (error: any) {
-                showSnackbar("Failed to load profile data", 'error');
-                navigate('/');
-            }
-        };
-
-        init();
-    }, [did, navigate, showSnackbar]);
+        setBalance(profile.credits || 0);
+    }, [profile]);
 
     function changeCredits(value: string) {
         let credits = parseInt(value, 10);
@@ -57,10 +33,8 @@ function ViewSettingsCredits({ onSave }: { onSave: () => void }) {
 
     async function addCredits() {
         try {
-            const getCredits = await api.post(`/add-credits`, { amount: credits });
-            const { balance } = getCredits.data;
-
-            setBalance(balance);
+            await api.post(`/add-credits`, { amount: credits });
+            
             setCredits(0);
             showSnackbar(`Successfully added ${credits} credits`, 'success');
             onSave();
