@@ -315,7 +315,7 @@ function isUserOldEnough(birthDate: string, contentRating: string): boolean {
     }
 
     const ageDifMs = Date.now() - birthTime;
-    const ageDate = new Date(ageDifMs); // miliseconds from epoch
+    const ageDate = new Date(ageDifMs); // milliseconds from epoch
     const userAge = Math.abs(ageDate.getUTCFullYear() - 1970);
 
     return (userAge >= contentMinAge);
