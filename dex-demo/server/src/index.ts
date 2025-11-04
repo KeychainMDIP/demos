@@ -1210,6 +1210,15 @@ app.post('/api/asset/:did/buy', isAuthenticated, async (req: Request, res: Respo
             return;
         }
 
+        const matrix = await keymaster.resolveAsset(asset.token.matrix);
+        const collection = await keymaster.resolveAsset(matrix.matrix?.collection);
+        const maxContentRating = buyerProfile.maxContentRating || 'G';
+
+        if (!isRatingAllowed(collection.collection?.contentRating, maxContentRating)) {
+            res.status(403).send("DID not found");
+            return;
+        }
+
         // Royalty adjustment
         let royalty = 0;
         let creator;
