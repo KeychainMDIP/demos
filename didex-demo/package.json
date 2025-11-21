@@ -1,5 +1,5 @@
 {
-  "name": "dex-demo",
+  "name": "didex-demo",
   "private": true,
   "scripts": {
     "install": "npm install --prefix server && npm install --prefix client",

@@ -1,0 +1,19 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: keychainmdip/didex-demo
+    environment:
+      - DIDEX_OWNER_DID=${DIDEX_OWNER_DID}
+      - DIDEX_HOST_PORT=${DIDEX_HOST_PORT:-3009}
+      - DIDEX_HOST_URL=${DIDEX_HOST_URL}
+      - DIDEX_GATEKEEPER_URL=${DIDEX_GATEKEEPER_URL:-http://host.docker.internal:4224}
+      - DIDEX_WALLET_URL=${DIDEX_WALLET_URL:-http://host.docker.internal:4224}
+      - DIDEX_DATABASE=${DIDEX_DATABASE}
+    volumes:
+      - ./server/data:/app/server/data
+    ports:
+      - "${DIDEX_HOST_PORT:-3009}:${DIDEX_HOST_PORT:-3009}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

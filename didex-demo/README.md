@@ -1,7 +1,7 @@
-# MDIP DEX Demo
+# MDIP DIDEX Demo
 
 ### Overview
-This repository hosts a DEX (decentralized exchange) demo using MDIP. It is split into two main folders:
+This repository hosts a DIDEX (DID exchange) demo using MDIP. It is split into two main folders:
 
 - **client/** – A React front-end
 - **server/** – An Express/Node back-end

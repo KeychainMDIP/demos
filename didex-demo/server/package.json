@@ -1,8 +1,8 @@
 {
-  "name": "dex-demo",
+  "name": "didex-demo",
   "version": "1.2.0",
   "type": "module",
-  "description": "MDIP DEX demo",
+  "description": "MDIP DIDEX demo",
   "main": "dist/index.js",
   "scripts": {
     "start": "tsc && node dist/index.js"
