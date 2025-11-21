@@ -3,17 +3,17 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: keychainmdip/dex-demo
+    image: keychainmdip/didex-demo
     environment:
-      - DEX_OWNER_DID=${DEX_OWNER_DID}
-      - DEX_HOST_PORT=${DEX_HOST_PORT:-3009}
-      - DEX_HOST_URL=${DEX_HOST_URL}
-      - DEX_GATEKEEPER_URL=${DEX_GATEKEEPER_URL:-http://host.docker.internal:4224}
-      - DEX_WALLET_URL=${DEX_WALLET_URL:-http://host.docker.internal:4224}
-      - DEX_DATABASE=${DEX_DATABASE}
+      - DIDEX_OWNER_DID=${DIDEX_OWNER_DID}
+      - DIDEX_HOST_PORT=${DIDEX_HOST_PORT:-3009}
+      - DIDEX_HOST_URL=${DIDEX_HOST_URL}
+      - DIDEX_GATEKEEPER_URL=${DIDEX_GATEKEEPER_URL:-http://host.docker.internal:4224}
+      - DIDEX_WALLET_URL=${DIDEX_WALLET_URL:-http://host.docker.internal:4224}
+      - DIDEX_DATABASE=${DIDEX_DATABASE}
     volumes:
       - ./server/data:/app/server/data
     ports:
-      - "${DEX_HOST_PORT:-3009}:${DEX_HOST_PORT:-3009}"
+      - "${DIDEX_HOST_PORT:-3009}:${DIDEX_HOST_PORT:-3009}"
     extra_hosts:
       - "host.docker.internal:host-gateway"

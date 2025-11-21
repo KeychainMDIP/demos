@@ -27,13 +27,13 @@ let db: DatabaseInterface;
 
 dotenv.config();
 
-const HOST_PORT = Number(process.env.DEX_HOST_PORT) || 3000;
-const HOST_URL = process.env.DEX_HOST_URL || 'http://localhost:3000';
-const GATEKEEPER_URL = process.env.DEX_GATEKEEPER_URL || 'http://localhost:4224';
-const WALLET_URL = process.env.DEX_WALLET_URL || 'http://localhost:4224';
-const OWNER_DID = process.env.DEX_OWNER_DID;
-const DEMO_NAME = process.env.DEX_DEMO_NAME || 'dex-demo';
-const DATABASE_TYPE = process.env.DEX_DATABASE_TYPE || 'json';
+const HOST_PORT = Number(process.env.DIDEX_HOST_PORT) || 3000;
+const HOST_URL = process.env.DIDEX_HOST_URL || 'http://localhost:3000';
+const GATEKEEPER_URL = process.env.DIDEX_GATEKEEPER_URL || 'http://localhost:4224';
+const WALLET_URL = process.env.DIDEX_WALLET_URL || 'http://localhost:4224';
+const OWNER_DID = process.env.DIDEX_OWNER_DID;
+const DEMO_NAME = process.env.DIDEX_DEMO_NAME || 'didex-demo';
+const DATABASE_TYPE = process.env.DIDEX_DATABASE_TYPE || 'json';
 let DEMO_DID: string;
 
 const app = express();
@@ -239,7 +239,7 @@ function addTransaction(user: User, txn: any): void {
 }
 
 const corsOptions = {
-    origin: process.env.DEX_CORS_SITE_ORIGIN || 'http://localhost:3009', // Origin needs to be specified with credentials true
+    origin: process.env.DIDEX_CORS_SITE_ORIGIN || 'http://localhost:3009', // Origin needs to be specified with credentials true
     methods: ['DELETE', 'GET', 'POST', 'PUT'],  // Specify which methods are allowed (e.g., GET, POST)
     credentials: true,         // Enable if you need to send cookies or authorization headers
     optionsSuccessStatus: 200  // Some legacy browsers choke on 204
@@ -1988,7 +1988,7 @@ app.get('/api/showcase', async (req, res) => {
     }
 });
 
-if (process.env.DEX_SERVE_CLIENT !== 'false') {
+if (process.env.DIDEX_SERVE_CLIENT !== 'false') {
     const __dirname = path.dirname(fileURLToPath(import.meta.url));
     const clientBuildPath = path.join(__dirname, '../../client/build');
     app.use(express.static(clientBuildPath));
@@ -2072,7 +2072,7 @@ app.listen(HOST_PORT, '0.0.0.0', async () => {
         console.log(`${DEMO_NAME} owner DID ${OWNER_DID}`);
     }
     else {
-        console.log('DEX_OWNER_DID not set');
+        console.log('DIDEX_OWNER_DID not set');
         exit(1);
     }
 
