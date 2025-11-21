@@ -34,7 +34,6 @@ const WALLET_URL = process.env.DIDEX_WALLET_URL || 'http://localhost:4224';
 const OWNER_DID = process.env.DIDEX_OWNER_DID;
 const DEMO_NAME = process.env.DIDEX_DEMO_NAME || 'didex-demo';
 const DATABASE_TYPE = process.env.DIDEX_DATABASE_TYPE || 'json';
-const PASSPHRASE = process.env.DIDEX_WALLET_PASSPHRASE;
 
 let DEMO_DID: string;
 
@@ -2078,9 +2077,11 @@ app.listen(HOST_PORT, '0.0.0.0', async () => {
         exit(1);
     }
 
-    if (!PASSPHRASE) {
-        console.error('DIDEX_WALLET_PASSPHRASE not set');
-        exit(1);
+    const passphrase = process.env.DIDEX_WALLET_PASSPHRASE;
+
+    if (!passphrase) {
+        console.error('Error: DIDEX_WALLET_PASSPHRASE environment variable not set');
+        process.exit(1);
     }
 
     gatekeeper = new GatekeeperClient();
@@ -2096,7 +2097,7 @@ app.listen(HOST_PORT, '0.0.0.0', async () => {
         gatekeeper,
         wallet,
         cipher,
-        passphrase: PASSPHRASE,
+        passphrase,
     });
     console.log(`${DEMO_NAME} using gatekeeper at ${GATEKEEPER_URL}`);
 
