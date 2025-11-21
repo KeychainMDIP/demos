@@ -11,6 +11,7 @@ services:
       - AD_KEYMASTER_URL=${AD_KEYMASTER_URL}
       - AD_WALLET_URL=${AD_WALLET_URL:-http://host.docker.internal:4224}
       - AD_DATABASE=${AD_DATABASE}
+      - AD_WALLET_PASSPHRASE=${AD_WALLET_PASSPHRASE}
     volumes:
       - ./server/data:/app/server/data
     ports:
