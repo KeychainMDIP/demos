@@ -635,6 +635,13 @@ app.listen(HOST_PORT, '0.0.0.0', async () => {
         console.log(`auth-demo using keymaster at ${process.env.AD_KEYMASTER_URL}`);
     }
     else {
+        const passphrase = process.env.AD_WALLET_PASSPHRASE;
+
+        if (!passphrase) {
+            console.error('Error: AD_WALLET_PASSPHRASE environment variable not set');
+            process.exit(1);
+        }
+
         const gatekeeper = new GatekeeperClient();
         await gatekeeper.connect({
             url: GATEKEEPER_URL,
@@ -647,7 +654,8 @@ app.listen(HOST_PORT, '0.0.0.0', async () => {
         keymaster = new Keymaster({
             gatekeeper,
             wallet,
-            cipher
+            cipher,
+            passphrase,
         });
         console.log(`auth-demo using gatekeeper at ${GATEKEEPER_URL}`);
     }

@@ -6,6 +6,7 @@ services:
     image: keychainmdip/didex-demo
     environment:
       - DIDEX_OWNER_DID=${DIDEX_OWNER_DID}
+      - DIDEX_WALLET_PASSPHRASE=${DIDEX_WALLET_PASSPHRASE}
       - DIDEX_HOST_PORT=${DIDEX_HOST_PORT:-3009}
       - DIDEX_HOST_URL=${DIDEX_HOST_URL}
       - DIDEX_GATEKEEPER_URL=${DIDEX_GATEKEEPER_URL:-http://host.docker.internal:4224}
