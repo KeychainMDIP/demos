@@ -375,6 +375,11 @@ app.listen(HOST_PORT, '0.0.0.0', async () => {
             cipher,
             passphrase,
         });
+        const result = await keymaster.listIds();
+        if (result.length === 0) {
+            await keymaster.createId("demo-user");
+            console.log(`auth-demo creating demo-user`);
+        }
         console.log(`auth-demo using gatekeeper at ${GATEKEEPER_URL}`);
     }
 
